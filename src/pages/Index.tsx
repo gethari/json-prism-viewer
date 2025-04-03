@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import JsonInput from '@/components/JsonInput';
 import JsonDiffViewer from '@/components/JsonDiffViewer';
@@ -65,19 +66,38 @@ const Index = () => {
   const isValidJsonString = (str: string): boolean => {
     if (!str.trim()) return false;
     
+    // Approach 1: Direct parsing (for valid JSON)
     try {
-      // Try parsing directly first
       JSON.parse(str);
       return true;
     } catch (e) {
+      // Continue to other approaches
+    }
+    
+    // Approach 2: For escaped JSON strings with escaped quotes like {\"key\":\"value\"}
+    try {
+      const fixedJson = str.replace(/\\"/g, '"');
+      JSON.parse(fixedJson);
+      return true;
+    } catch (e) {
+      // Continue to other approaches
+    }
+    
+    // Approach 3: For JSON strings that need to be unescaped first
+    try {
+      // Try to parse as a JSON string (with outer quotes)
+      const unescaped = JSON.parse(`"${str.replace(/"/g, '\\"')}"`);
       try {
-        // If direct parsing fails, try unescaping
-        JSON.parse(JSON.parse(`"${str.replace(/"/g, '\\"')}"`));
+        JSON.parse(unescaped);
         return true;
       } catch (e) {
-        return false;
+        // The unescaped string is not valid JSON
       }
+    } catch (e) {
+      // Not a valid JSON string that can be unescaped
     }
+    
+    return false;
   };
 
   const pasteFromClipboard = async (target: 'original' | 'modified') => {

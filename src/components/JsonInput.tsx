@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +28,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
     // Attempt to auto-escape the JSON if needed
     let processedValue = newValue;
     if (newValue.trim() !== '') {
-      processedValue = tryAutoEscapeJson(newValue);
+      processedValue = newValue;
     }
     
     onChange(processedValue);
@@ -43,71 +42,50 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
   };
 
   const validateJson = (jsonString: string) => {
+    // Try various ways to parse the JSON
+    const result = parseJsonSafely(jsonString);
+    setIsValid(result.isValid);
+  };
+
+  // Helper function that tries multiple approaches to parse JSON
+  const parseJsonSafely = (input: string) => {
+    // Approach 1: Direct parsing (for valid JSON)
     try {
-      // Try to parse as direct JSON first
-      JSON.parse(jsonString);
-      setIsValid(true);
-    } catch (e1) {
-      try {
-        // If that fails, try to parse as escaped JSON by unescaping it first
-        const unescaped = JSON.parse(`"${jsonString.replace(/"/g, '\\"')}"`);
-        try {
-          // Check if the unescaped string is valid JSON
-          JSON.parse(unescaped);
-          setIsValid(true);
-        } catch (e2) {
-          // If already escaped JSON with double escaped quotes like {\"key\":\"value\"}
-          // Let's try one more approach
-          try {
-            // Replace escaped quotes with actual quotes and try parsing
-            const fixedJson = jsonString.replace(/\\"/g, '"');
-            JSON.parse(fixedJson);
-            setIsValid(true);
-          } catch (e3) {
-            setIsValid(false);
-          }
-        }
-      } catch (e) {
-        setIsValid(false);
-      }
+      JSON.parse(input);
+      return { isValid: true, parsed: true };
+    } catch (e) {
+      // Continue to other approaches
     }
+    
+    // Approach 2: For escaped JSON strings with escaped quotes like {\"key\":\"value\"}
+    try {
+      const fixedJson = input.replace(/\\"/g, '"');
+      JSON.parse(fixedJson);
+      return { isValid: true, parsed: true };
+    } catch (e) {
+      // Continue to other approaches
+    }
+    
+    // Approach 3: For JSON strings that need to be unescaped first
+    try {
+      // Try to parse as a JSON string (with outer quotes)
+      const unescaped = JSON.parse(`"${input.replace(/"/g, '\\"')}"`);
+      try {
+        JSON.parse(unescaped);
+        return { isValid: true, parsed: true };
+      } catch (e) {
+        // The unescaped string is not valid JSON
+      }
+    } catch (e) {
+      // Not a valid JSON string that can be unescaped
+    }
+    
+    // If we've tried all approaches and none worked, it's invalid
+    return { isValid: false, parsed: false };
   };
 
   const tryAutoEscapeJson = (input: string): string => {
-    // Try parsing as direct JSON first
-    try {
-      JSON.parse(input);
-      return input; // Already valid JSON, return as is
-    } catch (e1) {
-      // Not valid direct JSON, try other formats
-      
-      // Try to see if it's an escaped JSON string
-      try {
-        const unescaped = JSON.parse(`"${input.replace(/"/g, '\\"')}"`);
-        try {
-          // Check if the unescaped string is valid JSON
-          JSON.parse(unescaped);
-          return input; // Already in a valid escaped format
-        } catch (e) {
-          // The unescaped string is not valid JSON
-        }
-      } catch (e2) {
-        // Not a valid JSON string that can be unescaped
-        
-        // Check if it's an already escaped JSON with escaped quotes like {\"key\":\"value\"}
-        try {
-          // Replace escaped quotes with actual quotes and try parsing
-          const fixedJson = input.replace(/\\"/g, '"');
-          JSON.parse(fixedJson);
-          return input; // It's valid when fixed, return as is since we'll fix during processing
-        } catch (e3) {
-          // Not a valid JSON even with quote fixing
-        }
-      }
-      
-      // Not valid JSON in any format, return as is
-      return input;
-    }
+    return input; // We'll keep the input as is and focus on validation
   };
 
   const handleClear = () => {
@@ -139,16 +117,22 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         return;
       }
       
-      // Try to auto-escape if needed
-      const processedText = tryAutoEscapeJson(text);
+      onChange(text);
+      validateJson(text);
       
-      onChange(processedText);
-      validateJson(processedText);
-      
-      toast({
-        title: "Imported from clipboard",
-        description: "Content has been pasted and automatically processed",
-      });
+      const result = parseJsonSafely(text);
+      if (result.isValid) {
+        toast({
+          title: "Valid JSON imported",
+          description: "Content has been pasted and validated successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invalid JSON format",
+          description: "The pasted content is not a valid JSON in any format",
+        });
+      }
     } catch (err) {
       toast({
         variant: "destructive",

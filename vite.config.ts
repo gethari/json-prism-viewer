@@ -22,7 +22,9 @@ export default defineConfig(({ mode }) => ({
   },
   define: {
     // Add process.env for libraries that depend on it
-    'process.env': {},
+    'process.env': {
+      NODE_ENV: JSON.stringify(mode),
+    },
     'process.browser': true,
     'process.version': '"v16.0.0"',
     'process.platform': '"browser"',

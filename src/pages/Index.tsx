@@ -1,16 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import JsonInput from '@/components/JsonInput';
 import JsonDiffViewer from '@/components/JsonDiffViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileDiff, Github, FileJson } from 'lucide-react';
+import { FileDiff, Github, FileJson, Sun, Moon, Clipboard } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useTheme } from '@/hooks/use-theme';
 
 const Index = () => {
   const [originalJson, setOriginalJson] = useState('');
   const [modifiedJson, setModifiedJson] = useState('');
   const [showDiff, setShowDiff] = useState(false);
+  const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   const handleCompare = () => {
     if (originalJson.trim() && modifiedJson.trim()) {
@@ -46,6 +50,58 @@ const Index = () => {
     setModifiedJson(modifiedSample);
   };
 
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const isValidJsonString = (str: string): boolean => {
+    if (!str.trim()) return false;
+    
+    try {
+      // Try parsing directly first
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      try {
+        // If direct parsing fails, try unescaping
+        JSON.parse(JSON.parse(`"${str.replace(/"/g, '\\"')}"`));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+  };
+
+  const pasteFromClipboard = async (target: 'original' | 'modified') => {
+    try {
+      const text = await navigator.clipboard.readText();
+      
+      if (isValidJsonString(text)) {
+        if (target === 'original') {
+          setOriginalJson(text);
+        } else {
+          setModifiedJson(text);
+        }
+        toast({
+          title: "Imported from clipboard",
+          description: "Valid JSON detected and pasted successfully",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invalid JSON",
+          description: "The clipboard content is not a valid JSON",
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Clipboard Error",
+        description: "Failed to read from clipboard. Make sure you've granted permission.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 py-4">
@@ -55,7 +111,15 @@ const Index = () => {
               <FileDiff className="h-6 w-6 text-primary" />
               <h1 className="text-2xl font-bold">JSON Prism Viewer</h1>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
               <a 
                 href="https://github.com" 
                 target="_blank" 
@@ -75,18 +139,44 @@ const Index = () => {
           <Card className="mb-8">
             <CardContent className="pt-6">
               <div className="grid gap-6 md:grid-cols-2">
-                <JsonInput 
-                  title="Original JSON (Before)" 
-                  value={originalJson} 
-                  onChange={setOriginalJson}
-                  placeholder="Paste your original JSON here..."
-                />
-                <JsonInput 
-                  title="Modified JSON (After)" 
-                  value={modifiedJson} 
-                  onChange={setModifiedJson}
-                  placeholder="Paste your modified JSON here..."
-                />
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => pasteFromClipboard('original')}
+                      className="mb-2"
+                    >
+                      <Clipboard className="mr-2 h-4 w-4" />
+                      Import from Clipboard
+                    </Button>
+                  </div>
+                  <JsonInput 
+                    title="Original JSON (Before)" 
+                    value={originalJson} 
+                    onChange={setOriginalJson}
+                    placeholder="Paste your original JSON here..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => pasteFromClipboard('modified')}
+                      className="mb-2"
+                    >
+                      <Clipboard className="mr-2 h-4 w-4" />
+                      Import from Clipboard
+                    </Button>
+                  </div>
+                  <JsonInput 
+                    title="Modified JSON (After)" 
+                    value={modifiedJson} 
+                    onChange={setModifiedJson}
+                    placeholder="Paste your modified JSON here..."
+                  />
+                </div>
               </div>
               
               <div className="mt-6 flex items-center justify-center space-x-4">

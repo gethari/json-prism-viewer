@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import JsonInput from '@/components/JsonInput';
 import JsonDiffViewer from '@/components/JsonDiffViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileDiff, Github, FileJson, Sun, Moon, Clipboard } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { FileDiff, Github, FileJson, Sun, Moon, Clipboard, Info } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/hooks/use-theme';
 
 const Index = () => {
@@ -15,6 +14,15 @@ const Index = () => {
   const [showDiff, setShowDiff] = useState(false);
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    // Show a welcome toast with info about the auto-escaping feature
+    toast({
+      title: "Welcome to JSON Prism",
+      description: "JSON is automatically processed for comparison. You can paste escaped or unescaped JSON.",
+      duration: 5000,
+    });
+  }, []);
 
   const handleCompare = () => {
     if (originalJson.trim() && modifiedJson.trim()) {
@@ -138,19 +146,15 @@ const Index = () => {
         <div className="mx-auto max-w-7xl">
           <Card className="mb-8">
             <CardContent className="pt-6">
+              <div className="flex items-center mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-md">
+                <Info className="h-5 w-5 mr-2 flex-shrink-0" />
+                <p className="text-sm">
+                  JSON content is automatically processed for easy comparison. You can paste either escaped or unescaped JSON, and the tool will handle it for you.
+                </p>
+              </div>
+              
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => pasteFromClipboard('original')}
-                      className="mb-2"
-                    >
-                      <Clipboard className="mr-2 h-4 w-4" />
-                      Import from Clipboard
-                    </Button>
-                  </div>
                   <JsonInput 
                     title="Original JSON (Before)" 
                     value={originalJson} 
@@ -159,17 +163,6 @@ const Index = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => pasteFromClipboard('modified')}
-                      className="mb-2"
-                    >
-                      <Clipboard className="mr-2 h-4 w-4" />
-                      Import from Clipboard
-                    </Button>
-                  </div>
                   <JsonInput 
                     title="Modified JSON (After)" 
                     value={modifiedJson} 

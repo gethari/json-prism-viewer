@@ -5,15 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
-import { Copy, Expand, ArrowLeft, ArrowRight, ZoomIn, ZoomOut } from 'lucide-react';
-import * as jsondiffpatch from 'jsondiffpatch';
+import { Copy, Expand, ZoomIn, ZoomOut } from 'lucide-react';
+import { create } from 'jsondiffpatch';
 
 interface JsonDiffViewerProps {
   originalJson: string;
   modifiedJson: string;
 }
 
-const diffpatcher = jsondiffpatch.create({
+// Configure jsondiffpatch
+const diffpatcher = create({
   arrays: {
     detectMove: true
   },
@@ -69,11 +70,36 @@ function parseJson(json: string): any {
   }
 }
 
+// Helper to identify changes
+function findChanges(original: any, modified: any): Record<string, string[]> {
+  const changes: Record<string, string[]> = {
+    added: [],
+    removed: [],
+    changed: []
+  };
+  
+  // Simple flat object comparison for demo
+  // For a real implementation, use a recursive approach for nested objects
+  const allKeys = new Set([...Object.keys(original || {}), ...Object.keys(modified || {})]);
+  
+  allKeys.forEach(key => {
+    if (!(key in original)) {
+      changes.added.push(key);
+    } else if (!(key in modified)) {
+      changes.removed.push(key);
+    } else if (JSON.stringify(original[key]) !== JSON.stringify(modified[key])) {
+      changes.changed.push(key);
+    }
+  });
+  
+  return changes;
+}
+
 const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJson }) => {
   const { toast } = useToast();
   const [formattedOriginal, setFormattedOriginal] = useState('');
   const [formattedModified, setFormattedModified] = useState('');
-  const [delta, setDelta] = useState<any>(null);
+  const [changes, setChanges] = useState<Record<string, string[]>>({ added: [], removed: [], changed: [] });
   const [fontSize, setFontSize] = useState(14);
   const [activeTab, setActiveTab] = useState('split');
 
@@ -89,8 +115,8 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
         const originalObj = parseJson(unescapedOriginal);
         const modifiedObj = parseJson(unescapedModified);
         
-        const diff = diffpatcher.diff(originalObj, modifiedObj);
-        setDelta(diff);
+        // Find changes between objects
+        setChanges(findChanges(originalObj, modifiedObj));
       } else {
         if (originalJson.trim()) {
           setFormattedOriginal(formatJson(unescapeJson(originalJson)));
@@ -104,7 +130,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
           setFormattedModified('');
         }
         
-        setDelta(null);
+        setChanges({ added: [], removed: [], changed: [] });
       }
     } catch (error) {
       console.error('Error processing JSON:', error);
@@ -139,10 +165,12 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
           pre { white-space: pre-wrap; font-family: monospace; font-size: 14px; }
           .added { background-color: rgb(230, 255, 237); }
           .removed { background-color: rgb(255, 235, 233); }
+          .changed { background-color: rgb(255, 250, 205); }
           @media (prefers-color-scheme: dark) {
             body { background-color: #1a1a1a; color: #e0e0e0; }
             .added { background-color: rgba(87, 171, 90, 0.3); }
             .removed { background-color: rgba(229, 83, 75, 0.3); }
+            .changed { background-color: rgba(229, 229, 83, 0.3); }
           }
         </style>
       </head>
@@ -151,11 +179,11 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
         <div class="container">
           <div class="json-panel">
             <h2>Original</h2>
-            <pre>${formattedOriginal.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+            <pre>${highlightJsonString(formattedOriginal, 'original')}</pre>
           </div>
           <div class="json-panel">
             <h2>Modified</h2>
-            <pre>${formattedModified.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+            <pre>${highlightJsonString(formattedModified, 'modified')}</pre>
           </div>
         </div>
       </body>
@@ -184,32 +212,69 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
     setFontSize(prev => Math.max(prev - 2, 10));
   };
 
-  const highlightDiff = (text: string, isOriginal: boolean) => {
-    if (!delta || !text) return <pre style={{ fontSize: `${fontSize}px` }}>{text}</pre>;
+  // Helper function to highlight changes in a JSON string
+  function highlightJsonString(jsonString: string, type: 'original' | 'modified'): string {
+    if (!jsonString) return '';
     
-    // This is a simplified highlighting, a full implementation would require
-    // advanced diff visualization that maps back to the formatted JSON
+    let html = jsonString;
+    
+    // Apply syntax highlighting with regex
+    html = html
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'key';
+            
+            // Extract property name for highlighting
+            const propName = match.replace(/"/g, '').replace(/:$/, '');
+            
+            if (changes.added.includes(propName) && type === 'modified') {
+              return `<span class="key added">${match}</span>`;
+            } else if (changes.removed.includes(propName) && type === 'original') {
+              return `<span class="key removed">${match}</span>`;
+            } else if (changes.changed.includes(propName)) {
+              return `<span class="key changed">${match}</span>`;
+            }
+          } else {
+            cls = 'string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'boolean';
+        } else if (/null/.test(match)) {
+          cls = 'null';
+        }
+        return `<span class="${cls}">${match}</span>`;
+      });
+    
+    return html;
+  }
+
+  // For jsx rendering in React component
+  const highlightDiff = (text: string, isOriginal: boolean) => {
+    if (!text) return <pre style={{ fontSize: `${fontSize}px` }}>{text}</pre>;
+    
+    // Create highlighting for JSX
     const lines = text.split('\n');
     
     return (
       <pre style={{ fontSize: `${fontSize}px` }}>
         {lines.map((line, i) => {
-          // This is a very naive way of highlighting changes
-          // A real implementation would parse the delta and match it to the lines
-          const trimmedLine = line.trim();
-          if (trimmedLine.startsWith('"') && trimmedLine.includes('":')) {
-            const propertyName = trimmedLine.split('":')[0].replace(/"/g, '');
-            if (delta[propertyName]) {
-              return (
-                <div 
-                  key={i} 
-                  className={isOriginal ? 'bg-diff-removed dark:bg-diff-removedDark' : 'bg-diff-added dark:bg-diff-addedDark'}
-                >
-                  {line}
-                </div>
-              );
+          // Look for property keys in the line
+          const keyMatch = line.match(/"([^"]+)":/);
+          
+          if (keyMatch && keyMatch[1]) {
+            const propName = keyMatch[1];
+            
+            if (changes.added.includes(propName) && !isOriginal) {
+              return <div key={i} className="bg-diff-added dark:bg-diff-addedDark">{line}</div>;
+            } else if (changes.removed.includes(propName) && isOriginal) {
+              return <div key={i} className="bg-diff-removed dark:bg-diff-removedDark">{line}</div>;
+            } else if (changes.changed.includes(propName)) {
+              return <div key={i} className="bg-yellow-100 dark:bg-yellow-900/30">{line}</div>;
             }
           }
+          
           return <div key={i}>{line}</div>;
         })}
       </pre>
@@ -299,16 +364,47 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             <div className="relative">
               <ScrollArea className="h-[500px] rounded-md border">
                 <div className="p-4">
-                  {delta ? (
-                    <pre style={{ fontSize: `${fontSize}px` }}>
-                      {/* A simplified unified view - a real implementation would show changes inline */}
-                      {`Changes detected but unified view requires the full jsondiffpatch HTML formatter.`}
-                    </pre>
-                  ) : (
-                    <pre style={{ fontSize: `${fontSize}px` }}>
-                      No differences found or insufficient data provided.
-                    </pre>
-                  )}
+                  <pre style={{ fontSize: `${fontSize}px` }}>
+                    {changes.added.length || changes.removed.length || changes.changed.length ? (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-medium">Changes Summary:</h3>
+                          {changes.added.length > 0 && (
+                            <div className="mt-2">
+                              <h4 className="font-medium text-green-600 dark:text-green-400">Added Properties:</h4>
+                              <ul className="list-disc pl-5">
+                                {changes.added.map((prop) => (
+                                  <li key={prop}>{prop}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {changes.removed.length > 0 && (
+                            <div className="mt-2">
+                              <h4 className="font-medium text-red-600 dark:text-red-400">Removed Properties:</h4>
+                              <ul className="list-disc pl-5">
+                                {changes.removed.map((prop) => (
+                                  <li key={prop}>{prop}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {changes.changed.length > 0 && (
+                            <div className="mt-2">
+                              <h4 className="font-medium text-yellow-600 dark:text-yellow-400">Modified Properties:</h4>
+                              <ul className="list-disc pl-5">
+                                {changes.changed.map((prop) => (
+                                  <li key={prop}>{prop}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      "No differences found or insufficient data provided."
+                    )}
+                  </pre>
                 </div>
               </ScrollArea>
             </div>

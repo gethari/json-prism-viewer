@@ -24,68 +24,36 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
-    
-    // Attempt to auto-escape the JSON if needed
-    let processedValue = newValue;
-    if (newValue.trim() !== '') {
-      processedValue = newValue;
-    }
-    
-    onChange(processedValue);
-    
-    if (processedValue.trim() === '') {
-      setIsValid(true);
-      return;
-    }
-    
-    validateJson(processedValue);
+    validateJson(newValue);
   };
 
   const validateJson = (jsonString: string) => {
-    // Try various ways to parse the JSON
     const result = parseJsonSafely(jsonString);
     setIsValid(result.isValid);
+    if (result.isValid && result.parsedValue) {
+      onChange(result.parsedValue);
+    }
   };
 
-  // Helper function that tries multiple approaches to parse JSON
   const parseJsonSafely = (input: string) => {
-    // Approach 1: Direct parsing (for valid JSON)
     try {
-      JSON.parse(input);
-      return { isValid: true, parsed: true };
-    } catch (e) {
-      // Continue to other approaches
-    }
+      const parsed = JSON.parse(input);
+      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
+    } catch (e) {}
     
-    // Approach 2: For escaped JSON strings with escaped quotes like {\"key\":\"value\"}
     try {
       const fixedJson = input.replace(/\\"/g, '"');
-      JSON.parse(fixedJson);
-      return { isValid: true, parsed: true };
-    } catch (e) {
-      // Continue to other approaches
-    }
+      const parsed = JSON.parse(fixedJson);
+      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
+    } catch (e) {}
     
-    // Approach 3: For JSON strings that need to be unescaped first
     try {
-      // Try to parse as a JSON string (with outer quotes)
       const unescaped = JSON.parse(`"${input.replace(/"/g, '\\"')}"`);
-      try {
-        JSON.parse(unescaped);
-        return { isValid: true, parsed: true };
-      } catch (e) {
-        // The unescaped string is not valid JSON
-      }
-    } catch (e) {
-      // Not a valid JSON string that can be unescaped
-    }
+      const parsed = JSON.parse(unescaped);
+      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
+    } catch (e) {}
     
-    // If we've tried all approaches and none worked, it's invalid
-    return { isValid: false, parsed: false };
-  };
-
-  const tryAutoEscapeJson = (input: string): string => {
-    return input; // We'll keep the input as is and focus on validation
+    return { isValid: false, parsed: false, parsedValue: null };
   };
 
   const handleClear = () => {
@@ -102,44 +70,6 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         description: "The JSON has been copied to your clipboard",
       });
     });
-  };
-
-  const pasteFromClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      
-      if (text.trim() === '') {
-        toast({
-          variant: "destructive",
-          title: "Empty clipboard",
-          description: "Your clipboard is empty",
-        });
-        return;
-      }
-      
-      onChange(text);
-      validateJson(text);
-      
-      const result = parseJsonSafely(text);
-      if (result.isValid) {
-        toast({
-          title: "Valid JSON imported",
-          description: "Content has been pasted and validated successfully",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Invalid JSON format",
-          description: "The pasted content is not a valid JSON in any format",
-        });
-      }
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Clipboard Error",
-        description: "Failed to read from clipboard. Make sure you've granted permission.",
-      });
-    }
   };
 
   return (
@@ -180,17 +110,6 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={pasteFromClipboard}
-            className="w-full flex justify-center"
-          >
-            <Clipboard className="mr-2 h-4 w-4" />
-            Import from Clipboard
-          </Button>
-        </div>
         <Textarea
           value={value}
           onChange={handleChange}

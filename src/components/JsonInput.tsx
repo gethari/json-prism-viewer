@@ -84,6 +84,24 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
     });
   };
 
+  // Handle pasting to allow multiple formats
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text');
+    if (!pastedText.trim()) return;
+    
+    const result = parseJsonSafely(pastedText);
+    if (result.isValid && result.parsedValue) {
+      e.preventDefault(); // Prevent default paste to handle it ourselves
+      setTextareaValue(result.parsedValue);
+      setIsValid(true);
+      onChange(result.parsedValue);
+      toast({
+        title: "JSON Formatted",
+        description: "Pasted JSON has been automatically formatted",
+      });
+    }
+  };
+
   // Update textareaValue when the parent component updates the value prop
   React.useEffect(() => {
     setTextareaValue(value);
@@ -130,6 +148,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         <Textarea
           value={textareaValue}
           onChange={handleChange}
+          onPaste={handlePaste}
           placeholder={placeholder || "Paste your JSON here..."}
           className={`h-[300px] font-mono ${!isValid && textareaValue ? 'border-red-500' : ''}`}
         />

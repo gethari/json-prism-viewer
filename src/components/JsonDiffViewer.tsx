@@ -5,11 +5,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Expand, ZoomIn, ZoomOut, Plus, Minus, Edit } from 'lucide-react';
+import { Copy, Expand, ZoomIn, ZoomOut, Plus, Minus, Edit, ArrowLeftRight } from 'lucide-react';
 
 interface JsonDiffViewerProps {
   originalJson: string;
   modifiedJson: string;
+}
+
+interface ValueChange {
+  original: any;
+  modified: any;
+}
+
+interface DiffChanges {
+  added: string[];
+  removed: string[];
+  changed: string[];
+  valueMap: Record<string, ValueChange>;
 }
 
 function unescapeJson(json: string): string {
@@ -61,28 +73,50 @@ function parseJson(json: string): any {
   }
 }
 
-// Enhanced version of findChanges to track specific values changes
-function findChanges(original: any, modified: any, path = ''): Record<string, any> {
-  const changes: Record<string, any> = {
+// Enhanced version of findChanges to track specific paths and values 
+function findChanges(original: any, modified: any, path = ''): DiffChanges {
+  const changes: DiffChanges = {
     added: [],
     removed: [],
     changed: [],
-    valueMap: {} // For tracking specific values that changed
+    valueMap: {}
   };
+  
+  // For different types or null/undefined scenarios
+  if (original === undefined && modified !== undefined) {
+    changes.added.push(path);
+    changes.valueMap[path] = { original: undefined, modified };
+    return changes;
+  }
+  
+  if (original !== undefined && modified === undefined) {
+    changes.removed.push(path);
+    changes.valueMap[path] = { original, modified: undefined };
+    return changes;
+  }
+  
+  if (original === null && modified !== null) {
+    changes.changed.push(path);
+    changes.valueMap[path] = { original: null, modified };
+    return changes;
+  }
+  
+  if (original !== null && modified === null) {
+    changes.changed.push(path);
+    changes.valueMap[path] = { original, modified: null };
+    return changes;
+  }
   
   // Handle different types
   if (typeof original !== typeof modified) {
-    if (path) changes.changed.push(path);
-    changes.valueMap[path] = { 
-      original: original, 
-      modified: modified 
-    };
+    changes.changed.push(path);
+    changes.valueMap[path] = { original, modified };
     return changes;
   }
   
   // Handle arrays
   if (Array.isArray(original) && Array.isArray(modified)) {
-    // Find common elements and differences
+    // Process arrays by index
     const maxLength = Math.max(original.length, modified.length);
     
     for (let i = 0; i < maxLength; i++) {
@@ -90,30 +124,21 @@ function findChanges(original: any, modified: any, path = ''): Record<string, an
       
       if (i >= original.length) {
         changes.added.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: undefined, 
-          modified: modified[i] 
-        };
+        changes.valueMap[currentPath] = { original: undefined, modified: modified[i] };
       } else if (i >= modified.length) {
         changes.removed.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: original[i], 
-          modified: undefined 
-        };
+        changes.valueMap[currentPath] = { original: original[i], modified: undefined };
       } else if (typeof original[i] === 'object' && original[i] !== null && 
-                typeof modified[i] === 'object' && modified[i] !== null) {
+                 typeof modified[i] === 'object' && modified[i] !== null) {
         // Recursively compare objects
-        const subChanges = findChanges(original[i], modified[i], currentPath);
-        changes.added = [...changes.added, ...subChanges.added];
-        changes.removed = [...changes.removed, ...subChanges.removed];
-        changes.changed = [...changes.changed, ...subChanges.changed];
-        Object.assign(changes.valueMap, subChanges.valueMap);
+        const nestedChanges = findChanges(original[i], modified[i], currentPath);
+        changes.added = [...changes.added, ...nestedChanges.added];
+        changes.removed = [...changes.removed, ...nestedChanges.removed];
+        changes.changed = [...changes.changed, ...nestedChanges.changed];
+        Object.assign(changes.valueMap, nestedChanges.valueMap);
       } else if (JSON.stringify(original[i]) !== JSON.stringify(modified[i])) {
         changes.changed.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: original[i], 
-          modified: modified[i] 
-        };
+        changes.valueMap[currentPath] = { original: original[i], modified: modified[i] };
       }
     }
     
@@ -124,10 +149,10 @@ function findChanges(original: any, modified: any, path = ''): Record<string, an
   if (typeof original === 'object' && original !== null && 
       typeof modified === 'object' && modified !== null) {
     
-    // Get all keys
+    // Get all unique keys from both objects
     const allKeys = new Set([
-      ...Object.keys(original || {}), 
-      ...Object.keys(modified || {})
+      ...Object.keys(original), 
+      ...Object.keys(modified)
     ]);
     
     for (const key of allKeys) {
@@ -135,75 +160,121 @@ function findChanges(original: any, modified: any, path = ''): Record<string, an
       
       if (!(key in original)) {
         changes.added.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: undefined, 
-          modified: modified[key] 
-        };
+        changes.valueMap[currentPath] = { original: undefined, modified: modified[key] };
       } else if (!(key in modified)) {
         changes.removed.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: original[key], 
-          modified: undefined 
-        };
+        changes.valueMap[currentPath] = { original: original[key], modified: undefined };
       } else if (typeof original[key] === 'object' && original[key] !== null && 
-                typeof modified[key] === 'object' && modified[key] !== null) {
+                 typeof modified[key] === 'object' && modified[key] !== null) {
         // Recursively compare objects
-        const subChanges = findChanges(original[key], modified[key], currentPath);
-        changes.added = [...changes.added, ...subChanges.added];
-        changes.removed = [...changes.removed, ...subChanges.removed];
-        changes.changed = [...changes.changed, ...subChanges.changed];
-        Object.assign(changes.valueMap, subChanges.valueMap);
+        const nestedChanges = findChanges(original[key], modified[key], currentPath);
+        changes.added = [...changes.added, ...nestedChanges.added];
+        changes.removed = [...changes.removed, ...nestedChanges.removed];
+        changes.changed = [...changes.changed, ...nestedChanges.changed];
+        Object.assign(changes.valueMap, nestedChanges.valueMap);
       } else if (JSON.stringify(original[key]) !== JSON.stringify(modified[key])) {
         changes.changed.push(currentPath);
-        changes.valueMap[currentPath] = { 
-          original: original[key], 
-          modified: modified[key] 
-        };
+        changes.valueMap[currentPath] = { original: original[key], modified: modified[key] };
       }
     }
     
     return changes;
   }
   
-  // For primitive values
+  // For primitive values that are different
   if (original !== modified) {
-    if (path) changes.changed.push(path);
-    changes.valueMap[path] = { 
-      original: original, 
-      modified: modified 
-    };
+    if (path) {
+      changes.changed.push(path);
+      changes.valueMap[path] = { original, modified };
+    }
   }
   
   return changes;
 }
 
-// Helper to find the path to a property from a json string line
-function findPropertyPathFromLine(line: string, jsonObj: any): string | null {
-  const keyMatch = line.match(/"([^"]+)":/);
-  if (!keyMatch || !keyMatch[1]) return null;
-  
-  const propName = keyMatch[1];
-  const indentation = line.match(/^\s*/)?.[0].length || 0;
-  
-  // Simple path finding for single-level objects
-  if (propName in jsonObj) {
-    return propName;
+// Helper function to extract meaningful paths from a line in formatted JSON
+function getPathFromLine(line: string, jsonLines: string[], lineIndex: number): string | null {
+  // Skip empty lines or lines with only brackets/braces
+  const trimmedLine = line.trim();
+  if (!trimmedLine || trimmedLine === '{' || trimmedLine === '}' || 
+      trimmedLine === '[' || trimmedLine === ']' || 
+      trimmedLine === ',' || trimmedLine === '') {
+    return null;
   }
   
-  // For more complex nested objects, we would need a more sophisticated algorithm
-  // This is a simplified approach
-  return propName;
+  // Extract the property name if available
+  const propertyMatch = line.match(/"([^"]+)"\s*:/);
+  if (!propertyMatch) return null;
+  
+  const propertyName = propertyMatch[1];
+  
+  // Calculate indentation level
+  const indentLevel = line.search(/\S|$/);
+  
+  // Start building the path from the current line going upward
+  let path = propertyName;
+  let arrayPath = '';
+  let inArray = false;
+  
+  // Check if we're inside an array
+  for (let i = lineIndex - 1; i >= 0; i--) {
+    const prevLine = jsonLines[i];
+    const prevIndent = prevLine.search(/\S|$/);
+    
+    // Skip empty lines
+    if (prevLine.trim() === '') continue;
+    
+    // If we find a line with less indentation
+    if (prevIndent < indentLevel) {
+      const arrayMatch = prevLine.match(/^\s*"([^"]+)"\s*:\s*\[/);
+      if (arrayMatch) {
+        // We're in an array
+        inArray = true;
+        arrayPath = arrayMatch[1];
+        
+        // Count how many array items we've passed to determine index
+        let arrayIndex = 0;
+        let itemIndent = indentLevel;
+        for (let j = i + 1; j < lineIndex; j++) {
+          const itemLine = jsonLines[j];
+          // If this line has the same indentation as our target and contains an object/value
+          if (itemLine.search(/\S|$/) === itemIndent && 
+              (itemLine.includes('{') || itemLine.includes('[') || 
+               itemLine.includes('"') || /true|false|null|\d/.test(itemLine))) {
+            arrayIndex++;
+          }
+        }
+        
+        return `${arrayPath}[${arrayIndex-1}]${path ? '.' + path : ''}`;
+      }
+      
+      // If it's an object property
+      const propertyMatch = prevLine.match(/"([^"]+)"\s*:/);
+      if (propertyMatch) {
+        if (inArray) {
+          // We're already tracking an array path
+          return `${arrayPath}${path ? '.' + path : ''}`;
+        } else {
+          // Normal object property
+          path = `${propertyMatch[1]}.${path}`;
+        }
+      }
+    }
+  }
+  
+  return path;
 }
 
 const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJson }) => {
   const { toast } = useToast();
   const [formattedOriginal, setFormattedOriginal] = useState('');
   const [formattedModified, setFormattedModified] = useState('');
-  const [changes, setChanges] = useState<Record<string, any>>({ 
-    added: [], removed: [], changed: [], valueMap: {} 
+  const [changes, setChanges] = useState<DiffChanges>({
+    added: [], removed: [], changed: [], valueMap: {}
   });
   const [fontSize, setFontSize] = useState(14);
   const [activeTab, setActiveTab] = useState('split');
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
 
   useEffect(() => {
     try {
@@ -217,7 +288,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
         const originalObj = parseJson(unescapedOriginal);
         const modifiedObj = parseJson(unescapedModified);
         
-        // Find changes between objects with enhanced function
+        // Find changes between objects
         setChanges(findChanges(originalObj, modifiedObj));
       } else {
         if (originalJson.trim()) {
@@ -244,6 +315,10 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
     }
   }, [originalJson, modifiedJson, toast]);
 
+  const toggleLineNumbers = () => {
+    setShowLineNumbers(!showLineNumbers);
+  };
+
   const openInNewTab = () => {
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
@@ -268,6 +343,9 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
           .added { background-color: rgb(230, 255, 237); color: #22863a; }
           .removed { background-color: rgb(255, 235, 233); color: #cb2431; }
           .changed { background-color: rgb(255, 250, 205); color: #735c0f; }
+          .line { display: flex; }
+          .line-number { min-width: 40px; text-align: right; color: #6e7781; padding-right: 8px; user-select: none; }
+          .line-content { width: 100%; }
           .line-added { background-color: rgba(46, 160, 67, 0.15); }
           .line-removed { background-color: rgba(248, 81, 73, 0.15); }
           .line-changed { background-color: rgba(210, 153, 34, 0.15); }
@@ -276,6 +354,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             .added { background-color: rgba(46, 160, 67, 0.15); color: #56d364; }
             .removed { background-color: rgba(248, 81, 73, 0.15); color: #f85149; }
             .changed { background-color: rgba(210, 153, 34, 0.15); color: #e3b341; }
+            .line-number { color: #8b949e; }
           }
         </style>
       </head>
@@ -284,11 +363,11 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
         <div class="container">
           <div class="json-panel">
             <h2>Original</h2>
-            <pre>${highlightJsonString(formattedOriginal, 'original')}</pre>
+            <pre>${renderWithLineNumbers(formattedOriginal, true, true)}</pre>
           </div>
           <div class="json-panel">
             <h2>Modified</h2>
-            <pre>${highlightJsonString(formattedModified, 'modified')}</pre>
+            <pre>${renderWithLineNumbers(formattedModified, false, true)}</pre>
           </div>
         </div>
       </body>
@@ -317,151 +396,109 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
     setFontSize(prev => Math.max(prev - 2, 10));
   };
 
-  // Helper function to highlight changes in a JSON string
-  function highlightJsonString(jsonString: string, type: 'original' | 'modified'): string {
-    if (!jsonString) return '';
+  // Determine line change status
+  function getLineStatus(line: string, lineIndex: number, isOriginal: boolean): 'added' | 'removed' | 'changed' | null {
+    if (!line.trim() || line.trim() === '{' || line.trim() === '}' || 
+        line.trim() === '[' || line.trim() === ']' || line.trim() === ',') {
+      return null;
+    }
     
-    // Process line by line for better highlighting
-    const lines = jsonString.split('\n');
-    const originalObj = parseJson(formattedOriginal);
-    const modifiedObj = parseJson(formattedModified);
+    const jsonLines = isOriginal ? formattedOriginal.split('\n') : formattedModified.split('\n');
+    const path = getPathFromLine(line, jsonLines, lineIndex);
     
-    const highlightedLines = lines.map((line, index) => {
-      // Extract property path from the line
-      const path = findPropertyPathFromLine(line, type === 'original' ? originalObj : modifiedObj);
-      
-      // Check if the key is in one of our change categories
-      if (path) {
-        if (changes.added.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-          return type === 'modified' 
-            ? `<div class="line-added">${line}</div>` 
-            : line;
-        } 
-        
-        if (changes.removed.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-          return type === 'original' 
-            ? `<div class="line-removed">${line}</div>` 
-            : line;
-        }
-        
-        if (changes.changed.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-          return `<div class="line-changed">${line}</div>`;
-        }
-      }
-      
-      // Value highlighting inside the lines
-      const keyMatch = line.match(/"([^"]+)":/);
-      if (keyMatch && keyMatch[1]) {
-        const propName = keyMatch[1];
-        
-        // Check for exact property match or property in path
-        const exactPath = path === propName ? propName : null;
-        
-        if (exactPath) {
-          if (changes.added.includes(exactPath) && type === 'modified') {
-            return line.replace(/"([^"]+)":/, '<span class="added">"$1":</span>');
-          } else if (changes.removed.includes(exactPath) && type === 'original') {
-            return line.replace(/"([^"]+)":/, '<span class="removed">"$1":</span>');
-          } else if (changes.changed.includes(exactPath)) {
-            return line.replace(/"([^"]+)":/, '<span class="changed">"$1":</span>');
-          }
-        }
-      }
-      
-      return line;
-    });
+    if (!path) return null;
     
-    return highlightedLines.join('\n');
+    // Check exact path match
+    if (changes.added.includes(path)) {
+      return isOriginal ? null : 'added';
+    }
+    
+    if (changes.removed.includes(path)) {
+      return isOriginal ? 'removed' : null;
+    }
+    
+    if (changes.changed.includes(path)) {
+      return 'changed';
+    }
+    
+    // Check if the path is a parent of any changes
+    const isPrefixOfAdd = changes.added.some(p => p.startsWith(`${path}.`) || p.startsWith(`${path}[`));
+    const isPrefixOfRemove = changes.removed.some(p => p.startsWith(`${path}.`) || p.startsWith(`${path}[`));
+    const isPrefixOfChange = changes.changed.some(p => p.startsWith(`${path}.`) || p.startsWith(`${path}[`));
+    
+    if (isPrefixOfAdd && !isOriginal) return 'added';
+    if (isPrefixOfRemove && isOriginal) return 'removed';
+    if (isPrefixOfChange) return 'changed';
+    
+    return null;
   }
 
-  // For jsx rendering in React component
-  const highlightDiff = (text: string, isOriginal: boolean) => {
+  // Render HTML with line numbers for the standalone view
+  function renderWithLineNumbers(jsonString: string, isOriginal: boolean, forHtml: boolean = false): string {
+    if (!jsonString) return '';
+    
+    const lines = jsonString.split('\n');
+    let result = '';
+    
+    lines.forEach((line, index) => {
+      const status = getLineStatus(line, index, isOriginal);
+      const statusClass = status ? `line-${status}` : '';
+      
+      if (forHtml) {
+        // For HTML output (popup window)
+        result += `<div class="line ${statusClass}">`;
+        result += `<span class="line-number">${index + 1}</span>`;
+        result += `<span class="line-content">${line}</span>`;
+        result += `</div>`;
+      } else {
+        // For React component
+        result += `<div class="${statusClass}">`;
+        result += `<span class="line-number">${index + 1}</span>`;
+        result += line;
+        result += `</div>`;
+      }
+    });
+    
+    return result;
+  }
+
+  // For JSX rendering in React component
+  const renderDiff = (text: string, isOriginal: boolean) => {
     if (!text) return <pre style={{ fontSize: `${fontSize}px` }}>{text}</pre>;
     
-    // Process all lines
     const lines = text.split('\n');
-    const originalObj = parseJson(formattedOriginal);
-    const modifiedObj = parseJson(formattedModified);
     
     return (
-      <pre style={{ fontSize: `${fontSize}px` }}>
+      <pre style={{ fontSize: `${fontSize}px` }} className="font-mono">
         {lines.map((line, i) => {
-          // Extract property path from the line
-          const path = findPropertyPathFromLine(line, isOriginal ? originalObj : modifiedObj);
+          const status = getLineStatus(line, i, isOriginal);
+          let statusIcon = null;
+          let statusClass = '';
           
-          // Check if the line contains any properties in our change lists
-          if (path) {
-            // Added properties (green background)
-            if (changes.added.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-              return !isOriginal ? (
-                <div key={i} className="bg-green-100 dark:bg-green-900/30 flex items-center">
-                  <Plus className="h-3 w-3 inline mr-1 text-green-600 dark:text-green-400" />
-                  {line}
-                </div>
-              ) : <div key={i}>{line}</div>;
-            }
-            
-            // Removed properties (red background)
-            if (changes.removed.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-              return isOriginal ? (
-                <div key={i} className="bg-red-100 dark:bg-red-900/30 flex items-center">
-                  <Minus className="h-3 w-3 inline mr-1 text-red-600 dark:text-red-400" />
-                  {line}
-                </div>
-              ) : <div key={i}>{line}</div>;
-            }
-            
-            // Changed properties (yellow background)
-            if (changes.changed.some(p => p === path || p.startsWith(`${path}.`) || p.startsWith(`${path}[`))) {
-              return (
-                <div key={i} className="bg-yellow-100 dark:bg-yellow-900/30 flex items-center">
-                  <Edit className="h-3 w-3 inline mr-1 text-yellow-600 dark:text-yellow-400" />
-                  {line}
-                </div>
-              );
-            }
+          if (status === 'added') {
+            statusIcon = <Plus className="h-3 w-3 inline mr-1 text-green-600 dark:text-green-400 flex-shrink-0" />;
+            statusClass = 'bg-green-100 dark:bg-green-900/30';
+          } else if (status === 'removed') {
+            statusIcon = <Minus className="h-3 w-3 inline mr-1 text-red-600 dark:text-red-400 flex-shrink-0" />;
+            statusClass = 'bg-red-100 dark:bg-red-900/30';
+          } else if (status === 'changed') {
+            statusIcon = <Edit className="h-3 w-3 inline mr-1 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />;
+            statusClass = 'bg-yellow-100 dark:bg-yellow-900/30';
           }
           
-          // Highlight specific key changes
-          const keyMatch = line.match(/"([^"]+)":/);
-          if (keyMatch && keyMatch[1]) {
-            const propName = keyMatch[1];
-            
-            // Get exact path for the property if it exists
-            if (path === propName) {
-              if (changes.added.includes(path) && !isOriginal) {
-                return (
-                  <div key={i} className="flex items-center">
-                    <Plus className="h-3 w-3 inline mr-1 text-green-600 dark:text-green-400" />
-                    {line.replace(new RegExp(`"${propName}":`, 'g'), 
-                      `<span class="text-green-600 dark:text-green-400">"${propName}":</span>`)}
-                  </div>
-                );
-              }
-              
-              if (changes.removed.includes(path) && isOriginal) {
-                return (
-                  <div key={i} className="flex items-center">
-                    <Minus className="h-3 w-3 inline mr-1 text-red-600 dark:text-red-400" />
-                    {line.replace(new RegExp(`"${propName}":`, 'g'), 
-                      `<span class="text-red-600 dark:text-red-400">"${propName}":</span>`)}
-                  </div>
-                );
-              }
-              
-              if (changes.changed.includes(path)) {
-                return (
-                  <div key={i} className="flex items-center">
-                    <Edit className="h-3 w-3 inline mr-1 text-yellow-600 dark:text-yellow-400" />
-                    {line.replace(new RegExp(`"${propName}":`, 'g'), 
-                      `<span class="text-yellow-600 dark:text-yellow-400">"${propName}":</span>`)}
-                  </div>
-                );
-              }
-            }
-          }
-          
-          return <div key={i}>{line}</div>;
+          return (
+            <div key={i} className={`flex ${statusClass}`}>
+              {showLineNumbers && (
+                <span className="text-gray-400 dark:text-gray-500 mr-4 text-right select-none" style={{ minWidth: '2.5rem' }}>
+                  {i + 1}
+                </span>
+              )}
+              <div className="flex items-start">
+                {statusIcon}
+                <span>{line}</span>
+              </div>
+            </div>
+          );
         })}
       </pre>
     );
@@ -478,7 +515,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/30 rounded-md">
               <h4 className="font-medium text-green-600 dark:text-green-400 flex items-center">
                 <Plus className="h-4 w-4 mr-1" />
-                Added Properties:
+                Added Properties ({changes.added.length}):
               </h4>
               <ul className="list-disc pl-5 mt-1">
                 {changes.added.map((prop) => (
@@ -501,7 +538,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/30 rounded-md">
               <h4 className="font-medium text-red-600 dark:text-red-400 flex items-center">
                 <Minus className="h-4 w-4 mr-1" />
-                Removed Properties:
+                Removed Properties ({changes.removed.length}):
               </h4>
               <ul className="list-disc pl-5 mt-1">
                 {changes.removed.map((prop) => (
@@ -524,7 +561,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-md">
               <h4 className="font-medium text-yellow-600 dark:text-yellow-400 flex items-center">
                 <Edit className="h-4 w-4 mr-1" />
-                Modified Properties:
+                Modified Properties ({changes.changed.length}):
               </h4>
               <ul className="list-disc pl-5 mt-1">
                 {changes.changed.map((prop) => (
@@ -587,6 +624,14 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
             <Button
               variant="outline"
               size="icon"
+              onClick={toggleLineNumbers}
+              title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
+            >
+              <span className="text-xs font-mono">#</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
               onClick={decreaseFontSize}
               title="Decrease font size"
             >
@@ -633,7 +678,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
                 </div>
                 <ScrollArea className="h-[500px] rounded-md border">
                   <div className="p-4">
-                    {highlightDiff(formattedOriginal, true)}
+                    {renderDiff(formattedOriginal, true)}
                   </div>
                 </ScrollArea>
               </div>
@@ -651,7 +696,7 @@ const JsonDiffViewer: React.FC<JsonDiffViewerProps> = ({ originalJson, modifiedJ
                 </div>
                 <ScrollArea className="h-[500px] rounded-md border">
                   <div className="p-4">
-                    {highlightDiff(formattedModified, false)}
+                    {renderDiff(formattedModified, false)}
                   </div>
                 </ScrollArea>
               </div>

@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Trash, Copy, Clipboard, Info } from 'lucide-react';
+import { Trash, Copy, Info } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -21,9 +22,19 @@ interface JsonInputProps {
 const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder }) => {
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
+  const [textareaValue, setTextareaValue] = useState(value);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
+    setTextareaValue(newValue);
+    
+    // If the textarea is empty, just clear without validation
+    if (!newValue.trim()) {
+      setIsValid(true);
+      onChange('');
+      return;
+    }
+    
     validateJson(newValue);
   };
 
@@ -57,6 +68,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
   };
 
   const handleClear = () => {
+    setTextareaValue('');
     onChange('');
     setIsValid(true);
   };
@@ -71,6 +83,11 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
       });
     });
   };
+
+  // Update textareaValue when the parent component updates the value prop
+  React.useEffect(() => {
+    setTextareaValue(value);
+  }, [value]);
 
   return (
     <Card className="w-full">
@@ -111,14 +128,14 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
       </CardHeader>
       <CardContent>
         <Textarea
-          value={value}
+          value={textareaValue}
           onChange={handleChange}
           placeholder={placeholder || "Paste your JSON here..."}
-          className={`h-[300px] font-mono ${!isValid && value ? 'border-red-500' : ''}`}
+          className={`h-[300px] font-mono ${!isValid && textareaValue ? 'border-red-500' : ''}`}
         />
       </CardContent>
       <CardFooter className="flex flex-col items-start">
-        {!isValid && value && (
+        {!isValid && textareaValue && (
           <p className="text-red-500 text-sm">Invalid JSON format</p>
         )}
         <p className="text-muted-foreground text-xs mt-2">

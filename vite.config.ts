@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: '/json-prism-viewer/',
+  base: mode === 'production' ? '/json-prism-viewer/' : '/',
   server: {
     host: "::",
     port: 8080,

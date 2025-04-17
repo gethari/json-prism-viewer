@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -62,7 +63,23 @@ This project is built with:
 
 ## How can I deploy this project?
 
+### Deploy via Lovable
+
 Simply open [Lovable](https://lovable.dev/projects/c7ae2a53-f8b8-4033-98e4-e0277e79ad74) and click on Share -> Publish.
+
+### Deploy to GitHub Pages
+
+This project is configured to automatically deploy to GitHub Pages when you push to the main branch. 
+
+To manually deploy, you can run the GitHub Actions workflow from the "Actions" tab in your repository.
+
+To enable GitHub Pages for your repository:
+
+1. Go to your repository settings
+2. Navigate to "Pages" in the sidebar
+3. Under "Build and deployment" > "Source", select "GitHub Actions"
+
+The deployed application will be available at: https://your-username.github.io/json-prism-viewer/
 
 ## Can I connect a custom domain to my Lovable project?
 

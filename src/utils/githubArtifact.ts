@@ -28,3 +28,38 @@ export async function fetchGitHubArtifact(url: string): Promise<ArtifactData | n
     return null;
   }
 }
+
+export function decodeBase64Json(base64String: string): Record<string, any> | null {
+  try {
+    // Decode the base64 string to a regular string
+    const jsonString = atob(base64String);
+    
+    // Parse the JSON string to an object
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error("Error decoding base64 JSON:", error);
+    return null;
+  }
+}
+
+export function parseUrlParams(): { before: Record<string, any> | null, after: Record<string, any> | null } {
+  const params = new URLSearchParams(window.location.search);
+  const beforeParam = params.get('before');
+  const afterParam = params.get('after');
+  
+  const result = {
+    before: null,
+    after: null
+  };
+  
+  if (beforeParam) {
+    result.before = decodeBase64Json(beforeParam);
+  }
+  
+  if (afterParam) {
+    result.after = decodeBase64Json(afterParam);
+  }
+  
+  return result;
+}
+

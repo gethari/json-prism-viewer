@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import JsonInput from '@/components/JsonInput';
 import JsonDiffViewer from '@/components/JsonDiffViewer';
@@ -9,7 +10,7 @@ import { FileDiff, Github, FileJson, Sun, Moon, Clipboard, Info, Download } from
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/hooks/use-theme';
 import { faker } from '@faker-js/faker';
-import { fetchGitHubArtifact } from '@/utils/githubArtifact';
+import { fetchGitHubArtifact, parseUrlParams } from '@/utils/githubArtifact';
 
 const Index = () => {
   const [originalJson, setOriginalJson] = useState('');
@@ -21,12 +22,35 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    // Show a welcome toast with info about the auto-escaping feature
-    toast({
-      title: "Welcome to JSON Prism",
-      description: "JSON is automatically processed for comparison. You can paste escaped or unescaped JSON.",
-      duration: 5000,
-    });
+    // Check for URL parameters on mount
+    const urlData = parseUrlParams();
+    
+    if (urlData.before || urlData.after) {
+      // We have data from URL params
+      if (urlData.before) {
+        setOriginalJson(JSON.stringify(urlData.before, null, 2));
+      }
+      
+      if (urlData.after) {
+        setModifiedJson(JSON.stringify(urlData.after, null, 2));
+      }
+      
+      // If we have both before and after, automatically show the diff
+      if (urlData.before && urlData.after) {
+        setShowDiff(true);
+        toast({
+          title: "Data loaded from URL",
+          description: "JSON data has been automatically loaded from URL parameters",
+        });
+      }
+    } else {
+      // Show the welcome toast only if we don't have URL params
+      toast({
+        title: "Welcome to JSON Prism",
+        description: "JSON is automatically processed for comparison. You can paste escaped or unescaped JSON.",
+        duration: 5000,
+      });
+    }
   }, []);
 
   const handleCompare = () => {
@@ -233,6 +257,46 @@ const Index = () => {
     }
   };
 
+  const generateShareableUrl = () => {
+    if (!originalJson.trim() || !modifiedJson.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Missing Data",
+        description: "Both original and modified JSON are required to generate a URL",
+      });
+      return;
+    }
+
+    try {
+      // Parse the JSON strings
+      const beforeObj = JSON.parse(originalJson);
+      const afterObj = JSON.parse(modifiedJson);
+      
+      // Encode the objects as base64
+      const beforeBase64 = btoa(JSON.stringify(beforeObj));
+      const afterBase64 = btoa(JSON.stringify(afterObj));
+      
+      // Generate the URL with the encoded parameters
+      const baseUrl = window.location.origin + window.location.pathname;
+      const shareableUrl = `${baseUrl}?before=${encodeURIComponent(beforeBase64)}&after=${encodeURIComponent(afterBase64)}`;
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(shareableUrl).then(() => {
+        toast({
+          title: "URL Copied to Clipboard",
+          description: "Share this URL to let others see the same comparison",
+        });
+      });
+    } catch (error) {
+      console.error("Error generating shareable URL:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate a shareable URL. Check that your JSON is valid.",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <header className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 py-4">
@@ -347,6 +411,15 @@ const Index = () => {
                   className="w-32"
                 >
                   Load Sample
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={generateShareableUrl}
+                  className="w-auto"
+                  title="Generate a shareable URL with the current comparison"
+                >
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  Share as URL
                 </Button>
               </div>
             </CardContent>

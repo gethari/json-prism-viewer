@@ -4,7 +4,6 @@ import { DiffEditor } from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ZoomIn, ZoomOut, Expand, Copy, ArrowLeftRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -96,15 +95,55 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
       <!DOCTYPE html>
       <html>
       <head>
-        <title>JSON Diff</title>
+        <title>JSON Diff - Expanded View</title>
         <style>
-          body { margin: 0; padding: 0; overflow: hidden; }
+          body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          }
           #container { width: 100vw; height: 100vh; }
+          .header {
+            padding: 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 500;
+          }
+          .btn {
+            padding: 8px 12px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+          }
+          .btn:hover {
+            background: #dee2e6;
+          }
+          .info {
+            font-size: 0.9rem;
+            color: #666;
+          }
         </style>
         <link rel="stylesheet" data-name="vs/editor/editor.main" 
               href="https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs/editor/editor.main.css">
       </head>
       <body>
+        <div class="header">
+          <div>
+            <h1>JSON Diff - Expanded View</h1>
+            <span class="info">Close this tab and return to the main application to modify JSON content</span>
+          </div>
+          <button class="btn" onclick="window.close()">Close</button>
+        </div>
         <div id="container"></div>
         <script>var require = { paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs' } };</script>
         <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.47.0/min/vs/loader.js"></script>
@@ -116,6 +155,7 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
               automaticLayout: true,
               theme: window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'vs-dark' : 'vs-light',
               readOnly: true,
+              renderSideBySide: true
             }).setModel({
               original: monaco.editor.createModel(${JSON.stringify(originalJson)}, 'json'),
               modified: monaco.editor.createModel(${JSON.stringify(modifiedJson)}, 'json')
@@ -187,7 +227,7 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
               variant="outline"
               size="icon"
               onClick={openInNewTab}
-              title="Open in new tab"
+              title="Open in new tab for better viewing"
             >
               <Expand className="h-4 w-4" />
             </Button>
@@ -222,9 +262,12 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
                   <ArrowLeftRight className="h-4 w-4" />
                 </Button>
               </div>
-              <div style={{ height: '500px', border: '1px solid var(--border)' }} className="rounded-md overflow-hidden">
+              <div 
+                style={{ height: activeTab === 'split' ? '600px' : '500px', border: '1px solid var(--border)' }} 
+                className="rounded-md overflow-hidden"
+              >
                 <DiffEditor
-                  height="500px"
+                  height={activeTab === 'split' ? "600px" : "500px"}
                   language="json"
                   original={originalJson}
                   modified={modifiedJson}
@@ -232,6 +275,11 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
                   theme="vs-dark"
                 />
               </div>
+              {activeTab === 'split' && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Note: For better split view experience, you can use the "Open in new tab" button in the top right.
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

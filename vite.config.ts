@@ -21,6 +21,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ['@monaco-editor/react']
+  },
   define: {
     // Add process.env for libraries that depend on it
     'process.env': {

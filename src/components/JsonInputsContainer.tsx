@@ -2,7 +2,6 @@
 import React from 'react';
 import JsonInput from '@/components/JsonInput';
 import { Info } from 'lucide-react';
-import GitHubArtifactLoader from '@/components/GitHubArtifactLoader';
 import JsonCompareToolbar from '@/components/JsonCompareToolbar';
 
 interface JsonInputsContainerProps {
@@ -20,11 +19,6 @@ const JsonInputsContainer: React.FC<JsonInputsContainerProps> = ({
   setModifiedJson,
   setShowDiff,
 }) => {
-  const handleArtifactLoaded = (original: string, modified: string) => {
-    setOriginalJson(original);
-    setModifiedJson(modified);
-  };
-
   return (
     <>
       <div className="flex items-center mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-md">
@@ -33,11 +27,6 @@ const JsonInputsContainer: React.FC<JsonInputsContainerProps> = ({
           JSON content is automatically processed for easy comparison. You can paste either escaped or unescaped JSON, and the tool will handle it for you.
         </p>
       </div>
-      
-      <GitHubArtifactLoader 
-        onArtifactLoaded={handleArtifactLoaded}
-        setShowDiff={setShowDiff}
-      />
       
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">

@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import JsonDiffViewer from '@/components/JsonDiffViewer';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import JsonInputsContainer from '@/components/JsonInputsContainer';
 import { parseUrlParams } from '@/utils/githubArtifact';
+import MonacoDiffViewer from '@/components/MonacoDiffViewer';
 
 const Index = () => {
   const [originalJson, setOriginalJson] = useState('');
@@ -65,7 +65,7 @@ const Index = () => {
           </Card>
           
           {showDiff && (
-            <JsonDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
+            <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
           )}
         </div>
       </main>

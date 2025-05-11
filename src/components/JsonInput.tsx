@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface JsonInputProps {
   title: string;
@@ -23,6 +24,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
   const [textareaValue, setTextareaValue] = useState(value);
+  const { autoCompare } = useSettings();
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -123,15 +125,17 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
       setTextareaValue(result.parsedValue);
       setIsValid(true);
       onChange(result.parsedValue);
+      
+      const statusMessage = autoCompare ? "JSON formatted and will be automatically compared" : "JSON formatted. Click Compare to view differences";
       toast({
         title: "JSON Formatted",
-        description: "Pasted JSON has been automatically formatted",
+        description: statusMessage,
       });
     }
   };
 
   // Update textareaValue when the parent component updates the value prop
-  React.useEffect(() => {
+  useEffect(() => {
     setTextareaValue(value);
   }, [value]);
 
@@ -141,14 +145,16 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span>{title}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>JSON will be automatically processed for comparison. You can paste escaped or unescaped JSON.</p>
-              </TooltipContent>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>JSON will be automatically processed for comparison. You can paste escaped or unescaped JSON.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="space-x-2">
             <Button 
@@ -187,6 +193,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
         )}
         <p className="text-muted-foreground text-xs mt-2">
           JSON will be automatically processed for comparison. Paste any valid JSON, escaped or unescaped.
+          {autoCompare ? " Auto-compare is enabled." : ""}
         </p>
       </CardFooter>
     </Card>

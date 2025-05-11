@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
@@ -8,14 +8,17 @@ import Footer from '@/components/layout/Footer';
 import JsonInputsContainer from '@/components/JsonInputsContainer';
 import MonacoDiffViewer from '@/components/MonacoDiffViewer';
 import { parseJson, safeStringify } from '@/utils/jsonUtils';
+import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 
-const Index = () => {
+const IndexContent = () => {
   const [originalJson, setOriginalJson] = useState('');
   const [modifiedJson, setModifiedJson] = useState('');
   const [showDiff, setShowDiff] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-
+  const { autoCompare, autoScroll } = useSettings();
+  const diffSectionRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
     // Parse URL parameters using React Router's useSearchParams
     const beforeParam = searchParams.get('before');
@@ -95,6 +98,37 @@ const Index = () => {
     }
   }, [searchParams, toast]);
 
+  // Effect for auto-compare functionality
+  useEffect(() => {
+    if (autoCompare && originalJson && modifiedJson) {
+      setShowDiff(true);
+      
+      // Auto-scroll to diff section if enabled
+      if (autoScroll && diffSectionRef.current) {
+        setTimeout(() => {
+          diffSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 300); // Small delay to ensure component is rendered
+      }
+    }
+  }, [originalJson, modifiedJson, autoCompare, autoScroll]);
+
+  // Handle when JSON content is loaded or pasted
+  const handleJsonChange = (type: 'original' | 'modified', value: string) => {
+    if (type === 'original') {
+      setOriginalJson(value);
+    } else {
+      setModifiedJson(value);
+    }
+
+    if (value && ((type === 'original' && modifiedJson) || (type === 'modified' && originalJson))) {
+      toast({
+        title: "JSON content updated",
+        description: autoCompare ? "Comparison will happen automatically" : "Click 'Compare' to view differences",
+        duration: 3000,
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Header />
@@ -106,21 +140,31 @@ const Index = () => {
               <JsonInputsContainer
                 originalJson={originalJson}
                 modifiedJson={modifiedJson}
-                setOriginalJson={setOriginalJson}
-                setModifiedJson={setModifiedJson}
+                setOriginalJson={(json) => handleJsonChange('original', json)}
+                setModifiedJson={(json) => handleJsonChange('modified', json)}
                 setShowDiff={setShowDiff}
               />
             </CardContent>
           </Card>
           
-          {showDiff && (
-            <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
-          )}
+          <div ref={diffSectionRef}>
+            {showDiff && (
+              <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
+            )}
+          </div>
         </div>
       </main>
       
       <Footer />
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <SettingsProvider>
+      <IndexContent />
+    </SettingsProvider>
   );
 };
 

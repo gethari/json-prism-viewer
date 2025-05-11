@@ -25,11 +25,22 @@ const Index = () => {
     
     if (beforeParam) {
       try {
-        // Try to decode and parse the 'before' parameter
+        // First decode URI component
         const decoded = decodeURIComponent(beforeParam);
-        const parsed = parseJson(decoded);
-        if (parsed) {
-          setOriginalJson(safeStringify(parsed));
+        
+        // Check if it's base64 encoded
+        let jsonData = null;
+        try {
+          // Try base64 decoding first
+          const decodedBase64 = atob(decoded);
+          jsonData = parseJson(decodedBase64);
+        } catch (base64Error) {
+          // If base64 decoding fails, try parsing directly
+          jsonData = parseJson(decoded);
+        }
+        
+        if (jsonData) {
+          setOriginalJson(safeStringify(jsonData));
           hasData = true;
         }
       } catch (e) {
@@ -39,11 +50,22 @@ const Index = () => {
     
     if (afterParam) {
       try {
-        // Try to decode and parse the 'after' parameter
+        // First decode URI component
         const decoded = decodeURIComponent(afterParam);
-        const parsed = parseJson(decoded);
-        if (parsed) {
-          setModifiedJson(safeStringify(parsed));
+        
+        // Check if it's base64 encoded
+        let jsonData = null;
+        try {
+          // Try base64 decoding first
+          const decodedBase64 = atob(decoded);
+          jsonData = parseJson(decodedBase64);
+        } catch (base64Error) {
+          // If base64 decoding fails, try parsing directly
+          jsonData = parseJson(decoded);
+        }
+        
+        if (jsonData) {
+          setModifiedJson(safeStringify(jsonData));
           hasData = true;
         }
       } catch (e) {

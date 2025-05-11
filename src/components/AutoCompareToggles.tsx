@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CompareIcon, ArrowDownIcon } from 'lucide-react';
+import { GitCompareArrows, ArrowDownIcon } from 'lucide-react';
 
 const AutoCompareToggles: React.FC = () => {
   const { autoCompare, setAutoCompare, autoScroll, setAutoScroll } = useSettings();
@@ -21,7 +21,7 @@ const AutoCompareToggles: React.FC = () => {
                 onCheckedChange={setAutoCompare} 
               />
               <Label htmlFor="auto-compare" className="cursor-pointer flex items-center gap-1">
-                <CompareIcon className="h-4 w-4" /> Auto Compare
+                <GitCompareArrows className="h-4 w-4" /> Auto Compare
               </Label>
             </div>
           </TooltipTrigger>

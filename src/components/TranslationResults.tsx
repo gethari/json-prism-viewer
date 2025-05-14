@@ -5,18 +5,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { safeStringify } from '@/utils/jsonUtils';
 import { Button } from '@/components/ui/button';
-import { Check, Copy, FileJson } from 'lucide-react';
+import { Check, Copy, FileJson, RefreshCw } from 'lucide-react';
 
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string }[];
   translationData: Record<string, string>;
   updatedConfigJson?: any;
+  onRevalidate?: () => void;
 }
 
 const TranslationResults: React.FC<TranslationResultsProps> = ({ 
   missingTranslations, 
   translationData,
-  updatedConfigJson
+  updatedConfigJson,
+  onRevalidate
 }) => {
   const { toast } = useToast();
   
@@ -50,18 +52,31 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <FileJson className="mr-2 h-5 w-5" />
-          Translation Results
-          {missingTranslations.length > 0 && (
-            <span className="ml-3 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs font-medium py-1 px-2 rounded-full">
-              {missingTranslations.length} missing keys
-            </span>
-          )}
-          {missingTranslations.length === 0 && (
-            <span className="ml-3 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium py-1 px-2 rounded-full flex items-center">
-              <Check className="h-3 w-3 mr-1" /> All keys present
-            </span>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            <FileJson className="mr-2 h-5 w-5" />
+            Translation Results
+            {missingTranslations.length > 0 && (
+              <span className="ml-3 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs font-medium py-1 px-2 rounded-full">
+                {missingTranslations.length} missing keys
+              </span>
+            )}
+            {missingTranslations.length === 0 && (
+              <span className="ml-3 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium py-1 px-2 rounded-full flex items-center">
+                <Check className="h-3 w-3 mr-1" /> All keys present
+              </span>
+            )}
+          </div>
+          
+          {missingTranslations.length > 0 && onRevalidate && (
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={onRevalidate}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Revalidate with Updates
+            </Button>
           )}
         </CardTitle>
       </CardHeader>

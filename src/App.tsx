@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "./hooks/use-theme";
 import JsonCompare from "./pages/JsonCompare";
 import TranslationChecker from "./pages/TranslationChecker";
+import Sidebar from "./components/layout/Sidebar";
 
 const queryClient = new QueryClient();
 
@@ -19,13 +20,15 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/json-compare" element={<JsonCompare />} />
-            <Route path="/translation-checker" element={<TranslationChecker />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="flex h-screen">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/json-compare" element={<JsonCompare />} />
+              <Route path="/translation-checker" element={<TranslationChecker />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

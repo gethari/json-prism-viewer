@@ -12,8 +12,8 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
     return results;
   }
 
-  // Check if this object has a label property
-  if (obj.label && typeof obj.label === 'string') {
+  // Check if this object has a label property with an exact match
+  if (obj.hasOwnProperty('label') && typeof obj.label === 'string') {
     const translationKey = obj.translationKeys && obj.translationKeys.label 
       ? obj.translationKeys.label 
       : null;
@@ -30,9 +30,7 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
     obj.forEach((item, index) => findLabelKeys(item, results, [...path, index]));
   } else {
     Object.entries(obj).forEach(([key, val]) => {
-      if (val && typeof val === 'object') {
-        findLabelKeys(val, results, [...path, key]);
-      }
+      findLabelKeys(val, results, [...path, key]);
     });
   }
 
@@ -126,46 +124,35 @@ export function updateConfigWithTranslationKeys(configJson: any, missingTranslat
   function updateObject(obj: any): any {
     if (!obj || typeof obj !== 'object') return obj;
     
-    // If this object has a label property
-    if (obj.label && typeof obj.label === 'string') {
-      const label = obj.label;
-      const key = missingTranslationsMap.get(label);
-      
-      // If this label has a missing translation key
-      if (key) {
-        // Create a new object with properties in the correct order
-        const result: any = {};
-        
-        for (const [propKey, propValue] of Object.entries(obj)) {
-          // Add the label first
-          if (propKey === 'label') {
-            result.label = propValue;
-            // Add translationKeys immediately after label
-            result.translationKeys = {
-              ...(obj.translationKeys || {}),
-              label: key
-            };
-          } 
-          // Skip the original translationKeys since we've already added the merged one
-          else if (propKey !== 'translationKeys') {
-            result[propKey] = updateObject(propValue);
-          }
-        }
-        
-        return result;
-      }
-    }
+    let result: any;
     
-    // Recursively process all properties
     if (Array.isArray(obj)) {
       return obj.map(item => updateObject(item));
     } else {
-      const result = { ...obj };
-      Object.entries(result).forEach(([key, val]) => {
-        if (val && typeof val === 'object') {
-          result[key] = updateObject(val);
+      // Create new object to ensure proper key ordering
+      result = {};
+      
+      // Check for the exact label property
+      const hasLabel = obj.hasOwnProperty('label') && typeof obj.label === 'string';
+      const label = hasLabel ? obj.label : null;
+      const needsTranslationKey = hasLabel && label && missingTranslationsMap.has(label) && 
+        (!obj.translationKeys || !obj.translationKeys.label);
+      
+      // Process each property in order
+      for (const [key, value] of Object.entries(obj)) {
+        // Add the key to result first
+        result[key] = key === 'label' ? value : updateObject(value);
+        
+        // Immediately after adding the label, add or update translationKeys
+        if (key === 'label' && needsTranslationKey) {
+          const translationKey = missingTranslationsMap.get(label);
+          result.translationKeys = {
+            ...(obj.translationKeys || {}),
+            label: translationKey
+          };
         }
-      });
+      }
+      
       return result;
     }
   }

@@ -81,8 +81,8 @@ const TranslationCheckerContent = () => {
         setTranslationJson(JSON.stringify(updatedTranslations, null, 2));
         
         toast({
-          title: "Revalidation Started",
-          description: "Updated configuration and translations have been set for revalidation",
+          title: "Updates Applied",
+          description: "Configuration updated with translation keys and missing translations added",
         });
         
         // Scroll to top

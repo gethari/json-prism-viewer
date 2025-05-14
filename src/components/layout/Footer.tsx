@@ -3,11 +3,14 @@ import React from 'react';
 
 const Footer = () => {
   return (
-    <footer className="bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 py-6">
-      <div className="container">
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-            JSON Localization Tools - Finding missing translation keys and comparing JSON files
+    <footer className="border-t py-6 md:px-8 md:py-0">
+      <div className="container flex flex-col items-center justify-between gap-4 md:h-14 md:flex-row">
+        <p className="text-xs text-muted-foreground md:text-sm">
+          JSON Prism - Advanced JSON tools for developers. © {new Date().getFullYear()} All Rights Reserved.
+        </p>
+        <div className="flex items-center gap-4 md:gap-2 md:px-0">
+          <p className="text-xs text-muted-foreground md:text-sm">
+            Translation Checker v1.0
           </p>
         </div>
       </div>

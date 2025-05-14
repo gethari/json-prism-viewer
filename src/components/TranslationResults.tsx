@@ -76,6 +76,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               className="flex items-center gap-2"
               onClick={onRevalidate}
               disabled={isProcessing}
+              title="Update configuration with translation keys and add missing entries to translation file"
             >
               {isProcessing ? (
                 <>
@@ -85,7 +86,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4" />
-                  Revalidate with Updates
+                  Apply Updates & Revalidate
                 </>
               )}
             </Button>
@@ -179,6 +180,19 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
           </Tabs>
         )}
       </CardContent>
+      {missingTranslations.length > 0 && (
+        <div className="px-6 pb-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-3 text-sm text-blue-700 dark:text-blue-300">
+            <p><strong>Revalidate Button:</strong> Clicking "Apply Updates & Revalidate" will:</p>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>Update your configuration input with all missing translation keys</li>
+              <li>Add the missing translations to your translation file</li>
+              <li>Auto-scroll to the top of the page</li>
+              <li>Re-process the data to verify all keys are now present</li>
+            </ul>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

@@ -1,170 +1,89 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import JsonInputsContainer from '@/components/JsonInputsContainer';
-import MonacoDiffViewer from '@/components/MonacoDiffViewer';
-import { parseJson, safeStringify } from '@/utils/jsonUtils';
-import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
+import { GitCompare, FileJson } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { SettingsProvider } from '@/contexts/SettingsContext';
 
-const IndexContent = () => {
-  const [originalJson, setOriginalJson] = useState('');
-  const [modifiedJson, setModifiedJson] = useState('');
-  const [showDiff, setShowDiff] = useState(false);
+const Index = () => {
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
-  const { autoCompare, autoScroll } = useSettings();
-  const diffSectionRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    // Parse URL parameters using React Router's useSearchParams
-    const beforeParam = searchParams.get('before');
-    const afterParam = searchParams.get('after');
-    
-    let hasData = false;
-    
-    if (beforeParam) {
-      try {
-        // First decode URI component
-        const decoded = decodeURIComponent(beforeParam);
-        
-        // Check if it's base64 encoded
-        let jsonData = null;
-        try {
-          // Try base64 decoding first
-          const decodedBase64 = atob(decoded);
-          jsonData = parseJson(decodedBase64);
-        } catch (base64Error) {
-          // If base64 decoding fails, try parsing directly
-          jsonData = parseJson(decoded);
-        }
-        
-        if (jsonData) {
-          setOriginalJson(safeStringify(jsonData));
-          hasData = true;
-        }
-      } catch (e) {
-        console.error("Error parsing 'before' parameter:", e);
-      }
-    }
-    
-    if (afterParam) {
-      try {
-        // First decode URI component
-        const decoded = decodeURIComponent(afterParam);
-        
-        // Check if it's base64 encoded
-        let jsonData = null;
-        try {
-          // Try base64 decoding first
-          const decodedBase64 = atob(decoded);
-          jsonData = parseJson(decodedBase64);
-        } catch (base64Error) {
-          // If base64 decoding fails, try parsing directly
-          jsonData = parseJson(decoded);
-        }
-        
-        if (jsonData) {
-          setModifiedJson(safeStringify(jsonData));
-          hasData = true;
-        }
-      } catch (e) {
-        console.error("Error parsing 'after' parameter:", e);
-      }
-    }
-    
-    // If we have both before and after, automatically show the diff
-    if (beforeParam && afterParam) {
-      setShowDiff(true);
-      toast({
-        title: "Data loaded from URL",
-        description: "JSON data has been automatically loaded from URL parameters",
-      });
-    } else if (hasData) {
-      toast({
-        title: "Partial data loaded from URL",
-        description: "Some JSON data has been loaded from URL parameters",
-      });
-    } else {
-      // Show the welcome toast only if we don't have URL params
-      toast({
-        title: "Welcome to JSON Prism",
-        description: "JSON is automatically processed for comparison. You can paste escaped or unescaped JSON.",
-        duration: 5000,
-      });
-    }
-  }, [searchParams, toast]);
-
-  // Effect for auto-compare functionality
-  useEffect(() => {
-    if (autoCompare && originalJson && modifiedJson) {
-      setShowDiff(true);
-      
-      // Auto-scroll to diff section if enabled
-      if (autoScroll && diffSectionRef.current) {
-        setTimeout(() => {
-          diffSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 300); // Small delay to ensure component is rendered
-      }
-    }
-  }, [originalJson, modifiedJson, autoCompare, autoScroll]);
-
-  // Handle when JSON content is loaded or pasted
-  const handleJsonChange = (type: 'original' | 'modified', value: string) => {
-    if (type === 'original') {
-      setOriginalJson(value);
-    } else {
-      setModifiedJson(value);
-    }
-
-    if (value && ((type === 'original' && modifiedJson) || (type === 'modified' && originalJson))) {
-      toast({
-        title: "JSON content updated",
-        description: autoCompare ? "Comparison will happen automatically" : "Click 'Compare' to view differences",
-        duration: 3000,
-      });
-    }
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Header />
       
       <main className="container py-8">
-        <div className="mx-auto max-w-7xl">
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <JsonInputsContainer
-                originalJson={originalJson}
-                modifiedJson={modifiedJson}
-                setOriginalJson={(json) => handleJsonChange('original', json)}
-                setModifiedJson={(json) => handleJsonChange('modified', json)}
-                setShowDiff={setShowDiff}
-              />
-            </CardContent>
-          </Card>
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold tracking-tight mb-2">JSON Prism Tools</h1>
+            <p className="text-muted-foreground">Powerful utilities for working with JSON data</p>
+          </div>
           
-          <div ref={diffSectionRef}>
-            {showDiff && (
-              <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
-            )}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* JSON Compare Tool Card */}
+            <Card className="transition-all hover:shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <GitCompare className="mr-2 h-6 w-6" />
+                  JSON Compare
+                </CardTitle>
+                <CardDescription>
+                  Compare two JSON documents and visualize their differences
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Upload or paste two JSON documents to see a detailed comparison. 
+                  Supports various JSON formats including escaped strings.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full" 
+                  onClick={() => navigate('/json-compare')}
+                >
+                  Open Tool
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            {/* Translation Keys Tool Card */}
+            <Card className="transition-all hover:shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileJson className="mr-2 h-6 w-6" />
+                  Translation Keys Checker
+                </CardTitle>
+                <CardDescription>
+                  Find missing translation keys in your localization files
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Compare your configuration JSON with a translation file to identify 
+                  missing labels. Automatically generate key-value pairs for missing translations.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  className="w-full" 
+                  onClick={() => navigate('/translation-checker')}
+                >
+                  Open Tool
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </div>
       </main>
       
       <Footer />
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <SettingsProvider>
-      <IndexContent />
-    </SettingsProvider>
   );
 };
 

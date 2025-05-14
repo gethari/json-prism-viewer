@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/layout/Header';
@@ -7,14 +6,24 @@ import Footer from '@/components/layout/Footer';
 import Sidebar from '@/components/layout/Sidebar';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import TranslationInputsContainer from '@/components/TranslationInputsContainer';
-import TranslationResults from '@/components/TranslationResults';
+import { UnicodeEscapeSettings } from '@/components/UnicodeEscapeSettings';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
 import { parseJson } from '@/utils/jsonUtils';
 import { findMissingTranslations, updateConfigWithTranslationKeys } from '@/utils/translationUtils';
+import TranslationResults from '@/components/TranslationResults';
 
 const TranslationCheckerContent = () => {
   const [configJson, setConfigJson] = useState('');
   const [translationJson, setTranslationJson] = useState('');
-  const [missingTranslations, setMissingTranslations] = useState<{key: string, value: string}[]>([]);
+  const [missingTranslations, setMissingTranslations] = useState<
+    { key: string; value: string; existsInTranslations: boolean }[]
+  >([]);
   const [showResults, setShowResults] = useState(false);
   const [updatedConfigJson, setUpdatedConfigJson] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,76 +35,100 @@ const TranslationCheckerContent = () => {
   useEffect(() => {
     if (configJson && translationJson && !isProcessing) {
       setIsProcessing(true);
-      
+
+      // Show toast notification that processing has started
+      toast({
+        title: 'Processing Translation Keys',
+        description: 'Analyzing your configuration and translation files...',
+      });
+
       try {
         const configData = typeof configJson === 'string' ? parseJson(configJson) : configJson;
-        const translationData = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
-        
+        const translationData =
+          typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
+
         if (configData && translationData) {
           const missing = findMissingTranslations(configData, translationData);
           setMissingTranslations(missing);
-          
+
           // Generate updated config with translation keys
           const updatedConfig = updateConfigWithTranslationKeys(configData, missing);
           setUpdatedConfigJson(updatedConfig);
-          
+
           setShowResults(true);
-          
+
           // Scroll to results
           setTimeout(() => {
-            resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+            resultsRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            });
           }, 300);
         }
       } catch (error) {
-        console.error("Error processing translation data:", error);
+        console.error('Error processing translation data:', error);
         toast({
-          title: "Error",
-          description: "Failed to process translation data",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to process translation data',
+          variant: 'destructive',
         });
       } finally {
         setIsProcessing(false);
+        // Show toast notification that processing is complete
+        if (!showResults) {
+          toast({
+            title: 'Processing Complete',
+            description: 'Translation key analysis is now complete',
+          });
+        }
       }
     }
-  }, [configJson, translationJson, toast, isProcessing]);
+  }, [configJson, translationJson, toast, isProcessing, showResults]);
 
   const handleRevalidate = () => {
     if (updatedConfigJson && !isProcessing) {
       setIsProcessing(true);
-      
+
+      // Reset the results first to provide visual feedback
+      setShowResults(false);
+
       try {
         // Set the updated config back to the input
         setConfigJson(JSON.stringify(updatedConfigJson, null, 2));
-        
+
         // Add missing translations to the translation JSON
         const translationData = parseJson(translationJson) || {};
         const updatedTranslations = { ...translationData };
-        
+
         // Only add missing translations that don't already exist
-        missingTranslations.forEach(({ key, value }) => {
-          if (!updatedTranslations[key]) {
+        for (const { key, value, existsInTranslations } of missingTranslations) {
+          if (!existsInTranslations && !updatedTranslations[key]) {
             updatedTranslations[key] = value;
           }
-        });
-        
+        }
+
         setTranslationJson(JSON.stringify(updatedTranslations, null, 2));
-        
+
         toast({
-          title: "Updates Applied",
-          description: "Configuration updated with translation keys and missing translations added",
+          title: 'Updates Applied',
+          description: 'Configuration updated with translation keys and missing translations added',
         });
-        
+
         // Scroll to top
         topRef.current?.scrollIntoView({ behavior: 'smooth' });
       } catch (error) {
-        console.error("Error updating translation data:", error);
+        console.error('Error updating translation data:', error);
         toast({
-          title: "Error",
-          description: "Failed to update translation data for revalidation",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Failed to update translation data for revalidation',
+          variant: 'destructive',
         });
       } finally {
-        setIsProcessing(false);
+        // Add a small delay before showing results again, for a more noticeable refresh effect
+        setTimeout(() => {
+          setIsProcessing(false);
+          setShowResults(true); // Show the results again
+        }, 800);
       }
     }
   };
@@ -103,12 +136,12 @@ const TranslationCheckerContent = () => {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      
+
       <div className="flex-1 flex flex-col min-h-screen overflow-auto bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <Header />
-        
-        <main className="container py-8 flex-1">
-          <div ref={topRef} className="mx-auto max-w-7xl">
+
+        <main className="px-4 py-8 flex-1 w-full">
+          <div ref={topRef} className="w-full">
             <h1 className="text-3xl font-bold tracking-tight mb-6">Translation Keys Checker</h1>
             <Card className="mb-8">
               <CardContent className="pt-6">
@@ -121,10 +154,22 @@ const TranslationCheckerContent = () => {
                 />
               </CardContent>
             </Card>
-            
-            <div ref={resultsRef}>
+
+            {/* Unicode Escaping Settings in an Accordion */}
+            <div className="mb-8">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="unicode-escaping">
+                  <AccordionTrigger>Unicode Quote Escaping Settings</AccordionTrigger>
+                  <AccordionContent>
+                    <UnicodeEscapeSettings />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+
+            <div ref={resultsRef} className={showResults ? 'animate-fade-in' : ''}>
               {showResults && (
-                <TranslationResults 
+                <TranslationResults
                   missingTranslations={missingTranslations}
                   translationData={parseJson(translationJson) || {}}
                   updatedConfigJson={updatedConfigJson}
@@ -135,7 +180,7 @@ const TranslationCheckerContent = () => {
             </div>
           </div>
         </main>
-        
+
         <Footer />
       </div>
     </div>

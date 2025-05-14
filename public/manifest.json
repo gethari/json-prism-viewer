@@ -1,24 +1,17 @@
-
 {
   "manifest_version": 3,
-  "name": "JSON Prism Viewer",
+  "name": "JSON Toolkit Viewer",
   "version": "1.0.0",
   "description": "Compare and visualize JSON differences from GitHub PRs",
   "action": {
     "default_popup": "index.html",
-    "default_title": "JSON Prism Viewer"
+    "default_title": "JSON Toolkit Viewer"
   },
-  "permissions": [
-    "clipboardRead",
-    "clipboardWrite",
-    "tabs"
-  ],
+  "permissions": ["clipboardRead", "clipboardWrite", "tabs"],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "host_permissions": [
-    "*://*/*"
-  ]
+  "host_permissions": ["*://*/*"]
 }

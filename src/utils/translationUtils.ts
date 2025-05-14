@@ -1,5 +1,6 @@
 
 import { parseJson } from './jsonUtils';
+import { stringSimilarity } from './stringUtils';
 
 /**
  * Recursively finds all label keys in a configuration object and their corresponding translation keys
@@ -53,12 +54,12 @@ function generateTranslationKey(label: string): string {
 }
 
 /**
- * Find missing translations in the translation file based on labels in config
+ * Find translations that need to be added to the translation file or need keys in the config
  * @param configJson The configuration JSON object or string
  * @param translationJson The translation JSON object or string
- * @returns Array of missing translation key-value pairs
+ * @returns Array of translation key-value pairs with a flag indicating if they already exist in translations
  */
-export function findMissingTranslations(configJson: any, translationJson: any): {key: string, value: string}[] {
+export function findMissingTranslations(configJson: any, translationJson: any): {key: string, value: string, existsInTranslations: boolean}[] {
   // Parse JSON if strings are provided
   const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
   const translations = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
@@ -78,8 +79,8 @@ export function findMissingTranslations(configJson: any, translationJson: any): 
     }
   });
 
-  // Check which translations are missing
-  const missingTranslations: {key: string, value: string}[] = [];
+  // Translations that need attention (either missing or need keys in config)
+  const translationsToProcess: {key: string, value: string, existsInTranslations: boolean}[] = [];
   
   labelEntries.forEach(({ label, translationKey }) => {
     const value = label;
@@ -87,38 +88,47 @@ export function findMissingTranslations(configJson: any, translationJson: any): 
     // If we have a translationKey in the config, check if it exists in translations
     if (translationKey) {
       if (!translations[translationKey]) {
-        missingTranslations.push({ key: translationKey, value });
+        translationsToProcess.push({ key: translationKey, value, existsInTranslations: false });
       }
     } else {
       // If no translationKey is provided, check if the value exists in any key
       if (!existingTranslationsMap.has(value)) {
         // Generate a new key for this value
         const newKey = generateTranslationKey(value);
-        missingTranslations.push({ key: newKey, value });
+        translationsToProcess.push({ key: newKey, value, existsInTranslations: false });
+      } else {
+        // The value exists in translations but has no key in the config
+        // Add it to the list with the existing translation key from the translations file
+        const existingKey = existingTranslationsMap.get(value);
+        if (existingKey) {
+          translationsToProcess.push({ key: existingKey, value, existsInTranslations: true });
+        }
       }
-      // If value exists but key doesn't match, we don't report it as missing
     }
   });
   
-  return missingTranslations;
+  return translationsToProcess;
 }
 
 /**
- * Updates a configuration object with missing translation keys
+ * Updates a configuration object with translation keys
  * @param configJson The configuration JSON object or string
- * @param missingTranslations Array of missing translation key-value pairs
+ * @param translationsToProcess Array of translation key-value pairs with existence flag
  * @returns Updated configuration object with translation keys added
  */
-export function updateConfigWithTranslationKeys(configJson: any, missingTranslations: {key: string, value: string}[]): any {
+export function updateConfigWithTranslationKeys(
+  configJson: any, 
+  translationsToProcess: {key: string, value: string, existsInTranslations: boolean}[]
+): any {
   // Parse JSON if string is provided
   const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
   if (!config) return config;
   
-  // Create a map for quick lookup of missing translations
-  const missingTranslationsMap = new Map<string, string>();
-  missingTranslations.forEach(({ key, value }) => {
-    missingTranslationsMap.set(value, key);
-  });
+  // Create a map for quick lookup of translations that need keys
+  const translationsMap = new Map<string, string>();
+  for (const { key, value } of translationsToProcess) {
+    translationsMap.set(value, key);
+  }
   
   // Function to recursively update the configuration
   function updateObject(obj: any): any {
@@ -129,27 +139,52 @@ export function updateConfigWithTranslationKeys(configJson: any, missingTranslat
     if (Array.isArray(obj)) {
       return obj.map(item => updateObject(item));
     } else {
-      // Create new object to ensure proper key ordering
+      // Create new object to maintain property order
       result = {};
       
       // Check for the exact label property
-      const hasLabel = obj.hasOwnProperty('label') && typeof obj.label === 'string';
+      const hasLabel = Object.prototype.hasOwnProperty.call(obj, 'label') && typeof obj.label === 'string';
       const label = hasLabel ? obj.label : null;
-      const needsTranslationKey = hasLabel && label && missingTranslationsMap.has(label) && 
-        (!obj.translationKeys || !obj.translationKeys.label);
+      
+      // Needs a translation key if:
+      // 1. It has a label
+      // 2. The label is in our translations map
+      // 3. There's no existing translationKeys.label OR the existing one is itself nested
+      const existingTranslationKey = hasLabel && obj.translationKeys?.label 
+        ? obj.translationKeys.label 
+        : null;
+      const hasNestedTranslationKeys = obj.translationKeys && obj.translationKeys.translationKeys;
+      
+      const needsTranslationKey = hasLabel && label && translationsMap.has(label) && 
+        (!existingTranslationKey || hasNestedTranslationKeys);
       
       // Process each property in order
       for (const [key, value] of Object.entries(obj)) {
-        // Add the key to result first
-        result[key] = key === 'label' ? value : updateObject(value);
-        
-        // Immediately after adding the label, add or update translationKeys
-        if (key === 'label' && needsTranslationKey) {
-          const translationKey = missingTranslationsMap.get(label);
-          result.translationKeys = {
-            ...(obj.translationKeys || {}),
-            label: translationKey
+        if (key === 'translationKeys' && hasNestedTranslationKeys) {
+          // Fix nested translationKeys by flattening the structure
+          result[key] = {
+            label: existingTranslationKey
           };
+        } else {
+          // For all other keys, process normally
+          result[key] = key === 'label' ? value : updateObject(value);
+          
+          // Immediately after adding the label, add or update translationKeys if needed
+          if (key === 'label' && needsTranslationKey && label) {
+            const translationKey = translationsMap.get(label);
+            
+            // Either create a new translationKeys object or update the existing one
+            if (!result.translationKeys) {
+              result.translationKeys = { label: translationKey };
+            } else if (!hasNestedTranslationKeys) {
+              // If existing translationKeys doesn't itself have a nested structure, just update the label
+              result.translationKeys = {
+                ...result.translationKeys,
+                label: translationKey
+              };
+            }
+            // If it has a nested structure, it was already fixed in the block above
+          }
         }
       }
       
@@ -158,4 +193,64 @@ export function updateConfigWithTranslationKeys(configJson: any, missingTranslat
   }
   
   return updateObject(JSON.parse(JSON.stringify(config))); // Deep clone before modifying
+}
+
+/**
+ * Extract all label values from a configuration object
+ * @param configJson The configuration JSON object or string
+ * @returns Array of all label values found in the config
+ */
+export function extractAllLabels(configJson: any): string[] {
+  // Parse JSON if string is provided
+  const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
+  if (!config) return [];
+  
+  // Use findLabelKeys to get all label entries
+  const labelEntries = findLabelKeys(config);
+  
+  // Extract just the label values
+  return labelEntries.map(entry => entry.label);
+}
+
+/**
+ * Find potential typos between config labels and translations
+ * @param configJson The configuration JSON object or string
+ * @param translationJson The translation JSON object or string 
+ * @returns Array of potential typo matches with similarity scores
+ */
+export function findPotentialTypos(configJson: any, translationJson: any): Array<{configLabel: string, translationText: string, similarity: number}> {
+  // Import on demand to avoid circular dependencies
+  
+  
+  // Parse JSON if strings are provided
+  const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
+  const translations = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
+  
+  if (!config || !translations) return [];
+  
+  const configLabels = extractAllLabels(config);
+  const translationValues = Object.values(translations) as string[];
+  const potentialTypos: Array<{configLabel: string, translationText: string, similarity: number}> = [];
+  
+  // Check each config label against each translation value
+  for (const configLabel of configLabels) {
+    for (const translationText of translationValues) {
+      // Skip exact matches
+      if (configLabel === translationText) continue;
+      
+      const similarity = stringSimilarity(configLabel, translationText);
+      
+      // If similarity is high but not 100%, it might be a typo
+      if (similarity >= 85 && similarity < 100) {
+        potentialTypos.push({
+          configLabel,
+          translationText,
+          similarity
+        });
+      }
+    }
+  }
+  
+  // Sort by similarity (highest first)
+  return potentialTypos.sort((a, b) => b.similarity - a.similarity);
 }

@@ -7,7 +7,7 @@ import { parseJson } from './jsonUtils';
  * @param results Array to accumulate results
  * @returns Array of objects with label value and translation key
  */
-function findLabelKeys(obj: any, results: {label: string, translationKey: string | null}[] = []): {label: string, translationKey: string | null}[] {
+function findLabelKeys(obj: any, results: {label: string, translationKey: string | null, path: any[]}[] = [], path: any[] = []): {label: string, translationKey: string | null, path: any[]}[] {
   if (!obj || typeof obj !== 'object') {
     return results;
   }
@@ -20,17 +20,18 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
     
     results.push({
       label: obj.label,
-      translationKey
+      translationKey,
+      path: [...path]
     });
   }
 
   // Recursively search all properties
   if (Array.isArray(obj)) {
-    obj.forEach(item => findLabelKeys(item, results));
+    obj.forEach((item, index) => findLabelKeys(item, results, [...path, index]));
   } else {
-    Object.values(obj).forEach(val => {
+    Object.entries(obj).forEach(([key, val]) => {
       if (val && typeof val === 'object') {
-        findLabelKeys(val, results);
+        findLabelKeys(val, results, [...path, key]);
       }
     });
   }
@@ -102,4 +103,61 @@ export function findMissingTranslations(configJson: any, translationJson: any): 
   });
   
   return missingTranslations;
+}
+
+/**
+ * Updates a configuration object with missing translation keys
+ * @param configJson The configuration JSON object or string
+ * @param missingTranslations Array of missing translation key-value pairs
+ * @returns Updated configuration object with translation keys added
+ */
+export function updateConfigWithTranslationKeys(configJson: any, missingTranslations: {key: string, value: string}[]): any {
+  // Parse JSON if string is provided
+  const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
+  if (!config) return config;
+  
+  // Create a map for quick lookup of missing translations
+  const missingTranslationsMap = new Map<string, string>();
+  missingTranslations.forEach(({ key, value }) => {
+    missingTranslationsMap.set(value, key);
+  });
+  
+  // Function to recursively update the configuration
+  function updateObject(obj: any): any {
+    if (!obj || typeof obj !== 'object') return obj;
+    
+    // If this object has a label property
+    if (obj.label && typeof obj.label === 'string') {
+      const label = obj.label;
+      const key = missingTranslationsMap.get(label);
+      
+      // If this label has a missing translation key
+      if (key) {
+        // Initialize translationKeys object if it doesn't exist
+        if (!obj.translationKeys) {
+          obj.translationKeys = {};
+        }
+        
+        // Add or update the label key
+        if (!obj.translationKeys.label) {
+          obj.translationKeys.label = key;
+        }
+      }
+    }
+    
+    // Recursively process all properties
+    if (Array.isArray(obj)) {
+      return obj.map(item => updateObject(item));
+    } else {
+      const result = { ...obj };
+      Object.entries(result).forEach(([key, val]) => {
+        if (val && typeof val === 'object') {
+          result[key] = updateObject(val);
+        }
+      });
+      return result;
+    }
+  }
+  
+  return updateObject(JSON.parse(JSON.stringify(config))); // Deep clone before modifying
 }

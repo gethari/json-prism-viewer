@@ -8,13 +8,14 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import TranslationInputsContainer from '@/components/TranslationInputsContainer';
 import TranslationResults from '@/components/TranslationResults';
 import { parseJson } from '@/utils/jsonUtils';
-import { findMissingTranslations } from '@/utils/translationUtils';
+import { findMissingTranslations, updateConfigWithTranslationKeys } from '@/utils/translationUtils';
 
 const TranslationCheckerContent = () => {
   const [configJson, setConfigJson] = useState('');
   const [translationJson, setTranslationJson] = useState('');
   const [missingTranslations, setMissingTranslations] = useState<{key: string, value: string}[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [updatedConfigJson, setUpdatedConfigJson] = useState<any>(null);
   const { toast } = useToast();
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +29,11 @@ const TranslationCheckerContent = () => {
         if (configData && translationData) {
           const missing = findMissingTranslations(configData, translationData);
           setMissingTranslations(missing);
+          
+          // Generate updated config with translation keys
+          const updatedConfig = updateConfigWithTranslationKeys(configData, missing);
+          setUpdatedConfigJson(updatedConfig);
+          
           setShowResults(true);
           
           // Scroll to results
@@ -69,6 +75,7 @@ const TranslationCheckerContent = () => {
               <TranslationResults 
                 missingTranslations={missingTranslations}
                 translationData={parseJson(translationJson) || {}}
+                updatedConfigJson={updatedConfigJson}
               />
             )}
           </div>

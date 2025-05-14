@@ -10,9 +10,14 @@ import { Check, Copy, FileJson } from 'lucide-react';
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string }[];
   translationData: Record<string, string>;
+  updatedConfigJson?: any;
 }
 
-const TranslationResults: React.FC<TranslationResultsProps> = ({ missingTranslations, translationData }) => {
+const TranslationResults: React.FC<TranslationResultsProps> = ({ 
+  missingTranslations, 
+  translationData,
+  updatedConfigJson
+}) => {
   const { toast } = useToast();
   
   // Generate the full updated translation object
@@ -31,6 +36,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({ missingTranslat
   );
   
   const fullTranslationsJson = safeStringify(updatedTranslations, 2);
+  const updatedConfigJsonString = updatedConfigJson ? safeStringify(updatedConfigJson, 2) : '';
   
   const handleCopy = (text: string, type: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -70,6 +76,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({ missingTranslat
             <TabsList className="mb-4">
               <TabsTrigger value="missing">Missing Keys Only</TabsTrigger>
               <TabsTrigger value="full">Full Updated Translations</TabsTrigger>
+              <TabsTrigger value="config">Updated Configuration JSON</TabsTrigger>
             </TabsList>
             
             <TabsContent value="missing">
@@ -118,6 +125,24 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({ missingTranslat
                 </div>
                 <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[400px]">
                   {fullTranslationsJson}
+                </pre>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="config">
+              <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium">Updated Configuration JSON (with translation keys)</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleCopy(updatedConfigJsonString, "updated configuration")}
+                  >
+                    <Copy className="h-4 w-4 mr-1" /> Copy JSON
+                  </Button>
+                </div>
+                <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[400px]">
+                  {updatedConfigJsonString}
                 </pre>
               </div>
             </TabsContent>

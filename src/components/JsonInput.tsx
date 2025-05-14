@@ -18,9 +18,10 @@ interface JsonInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder }) => {
+const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder, disabled = false }) => {
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
   const [textareaValue, setTextareaValue] = useState(value);
@@ -161,7 +162,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
               variant="outline" 
               size="icon" 
               onClick={handleCopy} 
-              disabled={!value}
+              disabled={!value || disabled}
               title="Copy to clipboard"
             >
               <Copy className="h-4 w-4" />
@@ -170,7 +171,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
               variant="outline" 
               size="icon" 
               onClick={handleClear} 
-              disabled={!value}
+              disabled={!value || disabled}
               title="Clear"
             >
               <Trash className="h-4 w-4" />
@@ -185,6 +186,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
           onPaste={handlePaste}
           placeholder={placeholder || "Paste your JSON here..."}
           className={`h-[300px] font-mono ${!isValid && textareaValue ? 'border-red-500' : ''}`}
+          disabled={disabled}
         />
       </CardContent>
       <CardFooter className="flex flex-col items-start">

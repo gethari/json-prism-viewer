@@ -12,7 +12,7 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
     return results;
   }
 
-  // Check if this object has both a label property and a translationKeys.label property
+  // Check if this object has a label property
   if (obj.label && typeof obj.label === 'string') {
     const translationKey = obj.translationKeys && obj.translationKeys.label 
       ? obj.translationKeys.label 
@@ -133,31 +133,26 @@ export function updateConfigWithTranslationKeys(configJson: any, missingTranslat
       
       // If this label has a missing translation key
       if (key) {
-        // Create a new object with the properties in the order we want
-        const newObj = { ...obj };
+        // Create a new object with properties in the correct order
+        const result: any = {};
         
-        // Re-order properties to put translationKeys right after label
-        const orderedObj: any = {};
-        
-        // Add all keys in order, with translationKeys right after label
-        Object.keys(newObj).forEach((objKey) => {
-          if (objKey === 'label') {
-            orderedObj[objKey] = newObj[objKey];
+        for (const [propKey, propValue] of Object.entries(obj)) {
+          // Add the label first
+          if (propKey === 'label') {
+            result.label = propValue;
             // Add translationKeys immediately after label
-            if (!newObj.translationKeys) {
-              orderedObj.translationKeys = { label: key };
-            } else {
-              orderedObj.translationKeys = {
-                ...newObj.translationKeys,
-                label: key
-              };
-            }
-          } else if (objKey !== 'translationKeys') { // Skip translationKeys as we've already added it
-            orderedObj[objKey] = newObj[objKey];
+            result.translationKeys = {
+              ...(obj.translationKeys || {}),
+              label: key
+            };
+          } 
+          // Skip the original translationKeys since we've already added the merged one
+          else if (propKey !== 'translationKeys') {
+            result[propKey] = updateObject(propValue);
           }
-        });
+        }
         
-        return orderedObj;
+        return result;
       }
     }
     

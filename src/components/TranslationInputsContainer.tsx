@@ -10,6 +10,7 @@ interface TranslationInputsContainerProps {
   translationJson: string;
   setConfigJson: (json: string) => void;
   setTranslationJson: (json: string) => void;
+  isProcessing?: boolean;
 }
 
 const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
@@ -17,6 +18,7 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
   translationJson,
   setConfigJson,
   setTranslationJson,
+  isProcessing = false,
 }) => {
   const handleConfigJsonPaste = (json: string) => {
     // Automatically escape the config JSON if needed
@@ -50,6 +52,7 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
             value={configJson} 
             onChange={handleConfigJsonPaste}
             placeholder="Paste your configuration JSON here..."
+            disabled={isProcessing}
           />
         </div>
         <div className="space-y-2">
@@ -58,6 +61,7 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
             value={translationJson} 
             onChange={setTranslationJson}
             placeholder="Paste your translation JSON here..."
+            disabled={isProcessing}
           />
         </div>
       </div>
@@ -65,12 +69,12 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
       <div className="flex justify-center mt-6">
         <Button 
           size="lg" 
-          disabled={!configJson || !translationJson}
+          disabled={!configJson || !translationJson || isProcessing}
           onClick={() => {
             // This functionality is handled automatically by the useEffect in parent component
           }}
         >
-          Check Translation Keys
+          {isProcessing ? 'Processing...' : 'Check Translation Keys'}
         </Button>
       </div>
     </>

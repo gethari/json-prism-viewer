@@ -17,12 +17,16 @@ const TranslationCheckerContent = () => {
   const [missingTranslations, setMissingTranslations] = useState<{key: string, value: string}[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [updatedConfigJson, setUpdatedConfigJson] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const topRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Effect to check translations when both inputs are available
   useEffect(() => {
-    if (configJson && translationJson) {
+    if (configJson && translationJson && !isProcessing) {
+      setIsProcessing(true);
+      
       try {
         const configData = typeof configJson === 'string' ? parseJson(configJson) : configJson;
         const translationData = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
@@ -49,22 +53,29 @@ const TranslationCheckerContent = () => {
           description: "Failed to process translation data",
           variant: "destructive",
         });
+      } finally {
+        setIsProcessing(false);
       }
     }
-  }, [configJson, translationJson, toast]);
+  }, [configJson, translationJson, toast, isProcessing]);
 
   const handleRevalidate = () => {
-    if (updatedConfigJson && missingTranslations.length > 0) {
-      // Set the updated config back to the input
-      setConfigJson(JSON.stringify(updatedConfigJson, null, 2));
+    if (updatedConfigJson && !isProcessing) {
+      setIsProcessing(true);
       
-      // Add missing translations to the translation JSON
       try {
+        // Set the updated config back to the input
+        setConfigJson(JSON.stringify(updatedConfigJson, null, 2));
+        
+        // Add missing translations to the translation JSON
         const translationData = parseJson(translationJson) || {};
         const updatedTranslations = { ...translationData };
         
+        // Only add missing translations that don't already exist
         missingTranslations.forEach(({ key, value }) => {
-          updatedTranslations[key] = value;
+          if (!updatedTranslations[key]) {
+            updatedTranslations[key] = value;
+          }
         });
         
         setTranslationJson(JSON.stringify(updatedTranslations, null, 2));
@@ -73,6 +84,9 @@ const TranslationCheckerContent = () => {
           title: "Revalidation Started",
           description: "Updated configuration and translations have been set for revalidation",
         });
+        
+        // Scroll to top
+        topRef.current?.scrollIntoView({ behavior: 'smooth' });
       } catch (error) {
         console.error("Error updating translation data:", error);
         toast({
@@ -80,6 +94,8 @@ const TranslationCheckerContent = () => {
           description: "Failed to update translation data for revalidation",
           variant: "destructive",
         });
+      } finally {
+        setIsProcessing(false);
       }
     }
   };
@@ -92,7 +108,7 @@ const TranslationCheckerContent = () => {
         <Header />
         
         <main className="container py-8 flex-1">
-          <div className="mx-auto max-w-7xl">
+          <div ref={topRef} className="mx-auto max-w-7xl">
             <h1 className="text-3xl font-bold tracking-tight mb-6">Translation Keys Checker</h1>
             <Card className="mb-8">
               <CardContent className="pt-6">
@@ -101,6 +117,7 @@ const TranslationCheckerContent = () => {
                   translationJson={translationJson}
                   setConfigJson={setConfigJson}
                   setTranslationJson={setTranslationJson}
+                  isProcessing={isProcessing}
                 />
               </CardContent>
             </Card>
@@ -112,6 +129,7 @@ const TranslationCheckerContent = () => {
                   translationData={parseJson(translationJson) || {}}
                   updatedConfigJson={updatedConfigJson}
                   onRevalidate={handleRevalidate}
+                  isProcessing={isProcessing}
                 />
               )}
             </div>

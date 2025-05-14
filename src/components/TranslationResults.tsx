@@ -5,20 +5,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { safeStringify } from '@/utils/jsonUtils';
 import { Button } from '@/components/ui/button';
-import { Check, Copy, FileJson, RefreshCw } from 'lucide-react';
+import { Check, Copy, FileJson, Loader, RefreshCw } from 'lucide-react';
 
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string }[];
   translationData: Record<string, string>;
   updatedConfigJson?: any;
   onRevalidate?: () => void;
+  isProcessing?: boolean;
 }
 
 const TranslationResults: React.FC<TranslationResultsProps> = ({ 
   missingTranslations, 
   translationData,
   updatedConfigJson,
-  onRevalidate
+  onRevalidate,
+  isProcessing = false
 }) => {
   const { toast } = useToast();
   
@@ -73,9 +75,19 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               variant="outline" 
               className="flex items-center gap-2"
               onClick={onRevalidate}
+              disabled={isProcessing}
             >
-              <RefreshCw className="h-4 w-4" />
-              Revalidate with Updates
+              {isProcessing ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Revalidate with Updates
+                </>
+              )}
             </Button>
           )}
         </CardTitle>
@@ -103,6 +115,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                       variant="outline" 
                       size="sm" 
                       onClick={() => handleCopy(missingTranslationsJson, "missing keys")}
+                      disabled={isProcessing}
                     >
                       <Copy className="h-4 w-4 mr-1" /> Copy JSON
                     </Button>
@@ -134,6 +147,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleCopy(fullTranslationsJson, "full translation file")}
+                    disabled={isProcessing}
                   >
                     <Copy className="h-4 w-4 mr-1" /> Copy JSON
                   </Button>
@@ -152,6 +166,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleCopy(updatedConfigJsonString, "updated configuration")}
+                    disabled={isProcessing}
                   >
                     <Copy className="h-4 w-4 mr-1" /> Copy JSON
                   </Button>

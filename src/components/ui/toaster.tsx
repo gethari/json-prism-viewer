@@ -25,7 +25,7 @@ export function Toaster() {
               )}
               {timeRemaining !== undefined && (
                 <div className="text-xs text-muted-foreground mt-1">
-                  Closing in {timeRemaining}s
+                  Closing in <span className="inline-block animate-pulse">{timeRemaining}s</span>
                 </div>
               )}
             </div>

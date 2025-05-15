@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -71,25 +72,26 @@ const addToRemoveQueue = (toastId: string) => {
     return
   }
 
-  // Set initial time remaining
+  // Set initial time remaining with one decimal for smoother animation
   const initialTimeRemaining = Math.ceil(TOAST_REMOVE_DELAY / 1000);
   timeRemainingMap[toastId] = initialTimeRemaining;
   
-  // Create a timer that updates every second
+  // Create a timer that updates more frequently (4 times per second) for smoother animation
   const timerInterval = setInterval(() => {
-    const remaining = Math.max(0, timeRemainingMap[toastId] - 1);
+    // Update with 0.25 second precision for smoother countdown
+    const remaining = Math.max(0, timeRemainingMap[toastId] - 0.25);
     timeRemainingMap[toastId] = remaining;
     
     dispatch({
       type: "UPDATE_TOAST_TIMER",
       toastId,
-      timeRemaining: remaining
+      timeRemaining: Math.ceil(remaining) // Round up for display
     });
     
     if (remaining <= 0) {
       clearInterval(timerInterval);
     }
-  }, 1000);
+  }, 250); // Update 4 times per second for smoother animation
   
   toastTimerIntervals.set(toastId, timerInterval);
 

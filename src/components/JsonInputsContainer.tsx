@@ -1,3 +1,4 @@
+
 import React from 'react';
 import JsonInput from '@/components/JsonInput';
 import { Info } from 'lucide-react';
@@ -34,20 +35,22 @@ const JsonInputsContainer: React.FC<JsonInputsContainerProps> = ({
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
+        <div className="space-y-2 h-full">
           <JsonInput 
             title="Original JSON (Before)" 
             value={originalJson} 
             onChange={setOriginalJson}
             placeholder="Paste your original JSON here..."
+            className="h-full"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 h-full">
           <JsonInput 
             title="Modified JSON (After)" 
             value={modifiedJson} 
             onChange={setModifiedJson}
             placeholder="Paste your modified JSON here..."
+            className="h-full"
           />
         </div>
       </div>

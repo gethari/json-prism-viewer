@@ -1,3 +1,4 @@
+
 import React from 'react';
 import JsonInput from '@/components/JsonInput';
 import { Info } from 'lucide-react';
@@ -71,22 +72,24 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
+        <div className="space-y-2 h-full">
           <JsonInput
             title="Configuration JSON"
             value={configJson}
             onChange={handleConfigJsonPaste}
             placeholder="Paste your configuration JSON here..."
             disabled={isProcessing}
+            className="h-full"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 h-full">
           <JsonInput
             title="Translation JSON (en-US.json)"
             value={translationJson}
             onChange={setTranslationJson}
             placeholder="Paste your translation JSON here..."
             disabled={isProcessing}
+            className="h-full"
           />
         </div>
       </div>

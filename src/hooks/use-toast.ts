@@ -63,6 +63,9 @@ interface State {
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 const toastTimerIntervals = new Map<string, ReturnType<typeof setInterval>>()
 
+// Store time remaining for each toast
+const timeRemainingMap: Record<string, number> = {}
+
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -70,10 +73,12 @@ const addToRemoveQueue = (toastId: string) => {
 
   // Set initial time remaining
   const initialTimeRemaining = Math.ceil(TOAST_REMOVE_DELAY / 1000);
+  timeRemainingMap[toastId] = initialTimeRemaining;
   
   // Create a timer that updates every second
   const timerInterval = setInterval(() => {
-    const remaining = Math.max(0, (dispatch as any).timeRemaining[toastId] - 1);
+    const remaining = Math.max(0, timeRemainingMap[toastId] - 1);
+    timeRemainingMap[toastId] = remaining;
     
     dispatch({
       type: "UPDATE_TOAST_TIMER",
@@ -168,19 +173,14 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
-// Store time remaining for each toast
-(dispatch as any).timeRemaining = {}
-
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
   
-  // Update timeRemaining tracker
+  // Update timeRemaining tracker when needed
   if (action.type === "ADD_TOAST" && action.toast.id) {
-    (dispatch as any).timeRemaining[action.toast.id] = Math.ceil(TOAST_REMOVE_DELAY / 1000);
-  } else if (action.type === "UPDATE_TOAST_TIMER" && action.toastId) {
-    (dispatch as any).timeRemaining[action.toastId] = action.timeRemaining;
+    timeRemainingMap[action.toast.id] = Math.ceil(TOAST_REMOVE_DELAY / 1000);
   } else if (action.type === "REMOVE_TOAST" && action.toastId) {
-    delete (dispatch as any).timeRemaining[action.toastId];
+    delete timeRemainingMap[action.toastId];
   }
 
   listeners.forEach((listener) => {

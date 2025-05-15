@@ -1,9 +1,8 @@
-
 import React from 'react';
 import JsonInput from '@/components/JsonInput';
 import { Info } from 'lucide-react';
 import JsonCompareToolbar from '@/components/JsonCompareToolbar';
-import AutoCompareToggles from '@/components/AutoCompareToggles';
+import { AutoCompareToggles } from '@/components/AutoCompareToggles';
 
 interface JsonInputsContainerProps {
   originalJson: string;

@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -6,13 +7,14 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000 // Changed from 1000000 to 5000 (5 seconds)
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  timeRemaining?: number
 }
 
 const actionTypes = {
@@ -20,6 +22,7 @@ const actionTypes = {
   UPDATE_TOAST: "UPDATE_TOAST",
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST",
+  UPDATE_TOAST_TIMER: "UPDATE_TOAST_TIMER",
 } as const
 
 let count = 0
@@ -48,12 +51,18 @@ type Action =
       type: ActionType["REMOVE_TOAST"]
       toastId?: ToasterToast["id"]
     }
+  | {
+      type: ActionType["UPDATE_TOAST_TIMER"]
+      toastId: string
+      timeRemaining: number
+    }
 
 interface State {
   toasts: ToasterToast[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+const toastTimerIntervals = new Map<string, ReturnType<typeof setInterval>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -62,6 +71,7 @@ const addToRemoveQueue = (toastId: string) => {
 
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
+    toastTimerIntervals.delete(toastId)
     dispatch({
       type: "REMOVE_TOAST",
       toastId: toastId,
@@ -69,6 +79,30 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
+  
+  // Create a timer that updates every second
+  const timerInterval = setInterval(() => {
+    const currentTimeout = toastTimeouts.get(toastId)
+    if (!currentTimeout) {
+      clearInterval(timerInterval)
+      return
+    }
+    
+    const elapsed = Date.now() - (currentTimeout as any)._idleStart
+    const remaining = Math.ceil((TOAST_REMOVE_DELAY - elapsed) / 1000)
+    
+    dispatch({
+      type: "UPDATE_TOAST_TIMER",
+      toastId,
+      timeRemaining: remaining > 0 ? remaining : 0
+    })
+    
+    if (remaining <= 0) {
+      clearInterval(timerInterval)
+    }
+  }, 1000)
+  
+  toastTimerIntervals.set(toastId, timerInterval)
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -123,6 +157,15 @@ export const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
       }
+    case "UPDATE_TOAST_TIMER":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) => 
+          t.id === action.toastId 
+            ? { ...t, timeRemaining: action.timeRemaining } 
+            : t
+        ),
+      }
   }
 }
 
@@ -154,6 +197,7 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
+      timeRemaining: Math.ceil(TOAST_REMOVE_DELAY / 1000),
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()

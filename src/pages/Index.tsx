@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Card,
@@ -36,7 +37,7 @@ const Index = () => {
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* JSON Compare Tool Card */}
-              <Card className="transition-all hover:shadow-lg">
+              <Card className="transition-all hover:shadow-lg flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <GitCompare className="mr-2 h-6 w-6" />
@@ -46,13 +47,13 @@ const Index = () => {
                     Compare two JSON documents and visualize their differences
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground">
                     Upload or paste two JSON documents to see a detailed comparison. Supports
                     various JSON formats including escaped strings.
                   </p>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="mt-auto">
                   <Button className="w-full" onClick={() => navigate('/json-compare')}>
                     Open Tool
                   </Button>
@@ -60,7 +61,7 @@ const Index = () => {
               </Card>
 
               {/* Translation Keys Tool Card */}
-              <Card className="transition-all hover:shadow-lg">
+              <Card className="transition-all hover:shadow-lg flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <FileJson className="mr-2 h-6 w-6" />
@@ -70,13 +71,13 @@ const Index = () => {
                     Find missing translation keys in your localization files
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground">
                     Compare your configuration JSON with a translation file to identify missing
                     labels. Automatically generate key-value pairs for missing translations.
                   </p>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="mt-auto">
                   <Button className="w-full" onClick={() => navigate('/translation-checker')}>
                     Open Tool
                   </Button>

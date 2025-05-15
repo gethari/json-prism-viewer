@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'dark' | 'light';
+type Theme = 'dark' | 'light' | 'system';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -12,29 +12,56 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  resolvedTheme: 'dark' | 'light'; // The actual theme applied based on system preference if theme is 'system'
 };
 
 const initialState: ThemeProviderState = {
-  theme: 'light',
+  theme: 'system',
   setTheme: () => null,
+  resolvedTheme: 'light',
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'light',
+  defaultTheme = 'system',
   storageKey = 'vite-ui-theme',
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   );
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('light');
 
+  // Handle system theme detection
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const updateResolvedTheme = () => {
+      let resolved: 'dark' | 'light';
+      
+      if (theme === 'system') {
+        resolved = mediaQuery.matches ? 'dark' : 'light';
+      } else {
+        resolved = theme as 'dark' | 'light';
+      }
+      
+      setResolvedTheme(resolved);
+      
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(resolved);
+    };
+    
+    updateResolvedTheme();
+    
+    // Listen for changes to the prefers-color-scheme media query
+    mediaQuery.addEventListener('change', updateResolvedTheme);
+    
+    return () => {
+      mediaQuery.removeEventListener('change', updateResolvedTheme);
+    };
   }, [theme]);
 
   const value = {
@@ -43,6 +70,7 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
     },
+    resolvedTheme,
   };
 
   return (

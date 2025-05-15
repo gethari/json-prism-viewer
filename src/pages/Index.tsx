@@ -1,95 +1,64 @@
-
 import React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
-import Sidebar from '@/components/layout/Sidebar';
-import { GitCompare, FileJson } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { SettingsProvider } from '@/contexts/SettingsContext';
+import { Link } from 'react-router-dom';
+import Header from '@/components/layout/Header';
 
-const Index = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
+const Index: React.FC = () => {
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <>
+      <Header />
+      <div className="container py-12">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4">Welcome to JSON Toolkit</h1>
+          <p className="text-muted-foreground">
+            A collection of tools to help you work with JSON data.
+          </p>
+        </div>
 
-      <div className="flex-1 flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-        <Header />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle>JSON Compare</CardTitle>
+              <CardDescription>
+                Compare two JSON objects and see the differences between them
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <p>
+                Our JSON comparison tool highlights differences between two JSON objects,
+                making it easy to spot changes, additions, and deletions.
+              </p>
+            </CardContent>
+            <CardFooter className="mt-auto pt-4">
+              <Link to="/json-compare" className="w-full">
+                <Button className="w-full">Open JSON Compare Tool</Button>
+              </Link>
+            </CardFooter>
+          </Card>
 
-        <main className="container py-8 flex-1">
-          <div className="mx-auto max-w-5xl">
-            <div className="mb-8 text-center">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">JSON Toolkit</h1>
-              <p className="text-muted-foreground">Powerful utilities for working with JSON data</p>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* JSON Compare Tool Card */}
-              <Card className="transition-all hover:shadow-lg flex flex-col">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <GitCompare className="mr-2 h-6 w-6" />
-                    JSON Compare
-                  </CardTitle>
-                  <CardDescription>
-                    Compare two JSON documents and visualize their differences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground">
-                    Upload or paste two JSON documents to see a detailed comparison. Supports
-                    various JSON formats including escaped strings.
-                  </p>
-                </CardContent>
-                <CardFooter className="mt-auto">
-                  <Button className="w-full" onClick={() => navigate('/json-compare')}>
-                    Open Tool
-                  </Button>
-                </CardFooter>
-              </Card>
-
-              {/* Translation Keys Tool Card */}
-              <Card className="transition-all hover:shadow-lg flex flex-col">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileJson className="mr-2 h-6 w-6" />
-                    Translation Keys Checker
-                  </CardTitle>
-                  <CardDescription>
-                    Find missing translation keys in your localization files
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground">
-                    Compare your configuration JSON with a translation file to identify missing
-                    labels. Automatically generate key-value pairs for missing translations.
-                  </p>
-                </CardContent>
-                <CardFooter className="mt-auto">
-                  <Button className="w-full" onClick={() => navigate('/translation-checker')}>
-                    Open Tool
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </div>
-        </main>
-
-        <Footer />
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Translation Checker</CardTitle>
+              <CardDescription>
+                Find missing translation keys and validate your localization files
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <p>
+                The translation checker helps you identify missing keys, untranslated strings,
+                and formatting issues in your localization files.
+              </p>
+            </CardContent>
+            <CardFooter className="mt-auto pt-4">
+              <Link to="/translation-checker" className="w-full">
+                <Button className="w-full">Open Translation Checker</Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

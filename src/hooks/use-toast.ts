@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -7,7 +6,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 5000 // Changed from 1000000 to 5000 (5 seconds)
+const TOAST_REMOVE_DELAY = 5000 // 5 seconds
 
 type ToasterToast = ToastProps & {
   id: string
@@ -69,6 +68,26 @@ const addToRemoveQueue = (toastId: string) => {
     return
   }
 
+  // Set initial time remaining
+  const initialTimeRemaining = Math.ceil(TOAST_REMOVE_DELAY / 1000);
+  
+  // Create a timer that updates every second
+  const timerInterval = setInterval(() => {
+    const remaining = Math.max(0, (dispatch as any).timeRemaining[toastId] - 1);
+    
+    dispatch({
+      type: "UPDATE_TOAST_TIMER",
+      toastId,
+      timeRemaining: remaining
+    });
+    
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+    }
+  }, 1000);
+  
+  toastTimerIntervals.set(toastId, timerInterval);
+
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId)
     toastTimerIntervals.delete(toastId)
@@ -79,30 +98,6 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
-  
-  // Create a timer that updates every second
-  const timerInterval = setInterval(() => {
-    const currentTimeout = toastTimeouts.get(toastId)
-    if (!currentTimeout) {
-      clearInterval(timerInterval)
-      return
-    }
-    
-    const elapsed = Date.now() - (currentTimeout as any)._idleStart
-    const remaining = Math.ceil((TOAST_REMOVE_DELAY - elapsed) / 1000)
-    
-    dispatch({
-      type: "UPDATE_TOAST_TIMER",
-      toastId,
-      timeRemaining: remaining > 0 ? remaining : 0
-    })
-    
-    if (remaining <= 0) {
-      clearInterval(timerInterval)
-    }
-  }, 1000)
-  
-  toastTimerIntervals.set(toastId, timerInterval)
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -173,8 +168,21 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
+// Store time remaining for each toast
+(dispatch as any).timeRemaining = {}
+
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
+  
+  // Update timeRemaining tracker
+  if (action.type === "ADD_TOAST" && action.toast.id) {
+    (dispatch as any).timeRemaining[action.toast.id] = Math.ceil(TOAST_REMOVE_DELAY / 1000);
+  } else if (action.type === "UPDATE_TOAST_TIMER" && action.toastId) {
+    (dispatch as any).timeRemaining[action.toastId] = action.timeRemaining;
+  } else if (action.type === "REMOVE_TOAST" && action.toastId) {
+    delete (dispatch as any).timeRemaining[action.toastId];
+  }
+
   listeners.forEach((listener) => {
     listener(memoryState)
   })

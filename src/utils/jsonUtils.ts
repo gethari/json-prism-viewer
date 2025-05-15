@@ -67,6 +67,26 @@ export function safeStringify(value: any, space = 2): string {
 }
 
 /**
+ * Converts a JSON object or string to a compact string without whitespace
+ * @param input JSON object or string to compact
+ * @returns Compact JSON string without whitespace
+ */
+export function compactJson(input: string | object): string {
+  try {
+    // If input is a string, parse it first
+    const parsed = typeof input === 'string' ? parseJson(input) : input;
+    
+    if (!parsed) return '';
+    
+    // Stringify without indentation (no whitespace)
+    return JSON.stringify(parsed);
+  } catch (error) {
+    console.error('Error compacting JSON:', error);
+    return '';
+  }
+}
+
+/**
  * Stringify a JSON object with unicode quotes
  * This can replace quotes with unicode escape sequences based on settings
  * @param obj - The object to stringify

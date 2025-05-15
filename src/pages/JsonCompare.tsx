@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +8,7 @@ import Footer from '@/components/layout/Footer';
 import Sidebar from '@/components/layout/Sidebar';
 import JsonInputsContainer from '@/components/JsonInputsContainer';
 import MonacoDiffViewer from '@/components/MonacoDiffViewer';
+import EscapedJsonView from '@/components/EscapedJsonView';
 import { parseJson, safeStringify } from '@/utils/jsonUtils';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 
@@ -156,7 +158,10 @@ const JsonCompareContent = () => {
 
             <div ref={diffSectionRef}>
               {showDiff && (
-                <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
+                <>
+                  <MonacoDiffViewer originalJson={originalJson} modifiedJson={modifiedJson} />
+                  <EscapedJsonView originalJson={originalJson} modifiedJson={modifiedJson} />
+                </>
               )}
             </div>
           </div>

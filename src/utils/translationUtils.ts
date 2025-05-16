@@ -1,4 +1,3 @@
-
 import { parseJson } from './jsonUtils';
 import { stringSimilarity } from './stringUtils';
 
@@ -8,30 +7,41 @@ import { stringSimilarity } from './stringUtils';
  * @param results Array to accumulate results
  * @returns Array of objects with label value and translation key
  */
-function findLabelKeys(obj: any, results: {label: string, translationKey: string | null, path: any[]}[] = [], path: any[] = []): {label: string, translationKey: string | null, path: any[]}[] {
+function findLabelKeys(obj: any, results: {label: string, translationKey: string | null, path: any[]}[] = [], path: any[] = [], ignoredFieldsArray: string[] = []): {label: string, translationKey: string | null, path: any[]}[] {
   if (!obj || typeof obj !== 'object') {
     return results;
   }
 
   // Check if this object has a label property with an exact match
+  // But skip if it has a fieldName (new condition as requested)
+  const hasFieldName = obj.hasOwnProperty('fieldName') && typeof obj.fieldName === 'string';
+  
   if (obj.hasOwnProperty('label') && typeof obj.label === 'string') {
-    const translationKey = obj.translationKeys && obj.translationKeys.label 
-      ? obj.translationKeys.label 
-      : null;
-    
-    results.push({
-      label: obj.label,
-      translationKey,
-      path: [...path]
-    });
+    if (hasFieldName) {
+      // Track this as an ignored field
+      if (!ignoredFieldsArray.includes(obj.fieldName)) {
+        ignoredFieldsArray.push(obj.fieldName);
+      }
+    } else {
+      // Process normally if there's no fieldName
+      const translationKey = obj.translationKeys && obj.translationKeys.label 
+        ? obj.translationKeys.label 
+        : null;
+      
+      results.push({
+        label: obj.label,
+        translationKey,
+        path: [...path]
+      });
+    }
   }
 
   // Recursively search all properties
   if (Array.isArray(obj)) {
-    obj.forEach((item, index) => findLabelKeys(item, results, [...path, index]));
+    obj.forEach((item, index) => findLabelKeys(item, results, [...path, index], ignoredFieldsArray));
   } else {
     Object.entries(obj).forEach(([key, val]) => {
-      findLabelKeys(val, results, [...path, key]);
+      findLabelKeys(val, results, [...path, key], ignoredFieldsArray);
     });
   }
 
@@ -55,21 +65,28 @@ function generateTranslationKey(label: string): string {
 
 /**
  * Find translations that need to be added to the translation file or need keys in the config
+ * Also collects ignored fields with fieldName property
  * @param configJson The configuration JSON object or string
  * @param translationJson The translation JSON object or string
- * @returns Array of translation key-value pairs with a flag indicating if they already exist in translations
+ * @returns Object with missing translations and ignored fields
  */
-export function findMissingTranslations(configJson: any, translationJson: any): {key: string, value: string, existsInTranslations: boolean}[] {
+export function findMissingTranslations(configJson: any, translationJson: any): {
+  items: {key: string, value: string, existsInTranslations: boolean}[];
+  ignoredFields: string[];
+} {
   // Parse JSON if strings are provided
   const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
   const translations = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
 
   if (!config || !translations) {
-    return [];
+    return { items: [], ignoredFields: [] };
   }
 
+  // Track ignored fields with fieldName property
+  const ignoredFields: string[] = [];
+  
   // Find all label keys in the config
-  const labelEntries = findLabelKeys(config);
+  const labelEntries = findLabelKeys(config, [], [], ignoredFields);
   
   // Create a map of existing translation values to keys
   const existingTranslationsMap = new Map<string, string>();
@@ -107,7 +124,10 @@ export function findMissingTranslations(configJson: any, translationJson: any): 
     }
   });
   
-  return translationsToProcess;
+  return {
+    items: translationsToProcess,
+    ignoredFields
+  };
 }
 
 /**
@@ -219,9 +239,6 @@ export function extractAllLabels(configJson: any): string[] {
  * @returns Array of potential typo matches with similarity scores
  */
 export function findPotentialTypos(configJson: any, translationJson: any): Array<{configLabel: string, translationText: string, similarity: number}> {
-  // Import on demand to avoid circular dependencies
-  
-  
   // Parse JSON if strings are provided
   const config = typeof configJson === 'string' ? parseJson(configJson) : configJson;
   const translations = typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;

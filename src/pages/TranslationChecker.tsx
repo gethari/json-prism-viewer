@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +25,7 @@ const TranslationCheckerContent = () => {
   const [missingTranslations, setMissingTranslations] = useState<
     { key: string; value: string; existsInTranslations: boolean }[]
   >([]);
+  const [ignoredFields, setIgnoredFields] = useState<string[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [updatedConfigJson, setUpdatedConfigJson] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,11 +50,12 @@ const TranslationCheckerContent = () => {
           typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
 
         if (configData && translationData) {
-          const missing = findMissingTranslations(configData, translationData);
-          setMissingTranslations(missing);
+          const result = findMissingTranslations(configData, translationData);
+          setMissingTranslations(result.items);
+          setIgnoredFields(result.ignoredFields || []);
 
           // Generate updated config with translation keys
-          const updatedConfig = updateConfigWithTranslationKeys(configData, missing);
+          const updatedConfig = updateConfigWithTranslationKeys(configData, result.items);
           setUpdatedConfigJson(updatedConfig);
 
           setShowResults(true);
@@ -171,6 +174,7 @@ const TranslationCheckerContent = () => {
               {showResults && (
                 <TranslationResults
                   missingTranslations={missingTranslations}
+                  ignoredFields={ignoredFields}
                   translationData={parseJson(translationJson) || {}}
                   updatedConfigJson={updatedConfigJson}
                   onRevalidate={handleRevalidate}
@@ -196,3 +200,4 @@ const TranslationChecker = () => {
 };
 
 export default TranslationChecker;
+

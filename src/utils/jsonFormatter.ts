@@ -56,3 +56,64 @@ export const parseJsonSafely = (input: string) => {
   
   return { isValid: false, parsed: false, parsedValue: null };
 };
+
+/**
+ * Escapes a JSON string properly with backslashes
+ * @param jsonString - The JSON string to escape
+ * @returns The escaped JSON string
+ */
+export const escapeJsonString = (jsonString: string): string => {
+  try {
+    if (!jsonString.trim()) {
+      return '';
+    }
+    
+    // First, ensure we have a valid JSON object
+    const parsedJson = JSON.parse(jsonString);
+    
+    // Convert to a compact string without formatting
+    const compactJson = JSON.stringify(parsedJson);
+    
+    // Now, escape the string for use in string literals
+    // Replace double quotes with escaped double quotes
+    const escaped = compactJson.replace(/"/g, '\\"');
+    
+    return escaped;
+  } catch (error) {
+    console.error('Error escaping JSON:', error);
+    return jsonString; // Return original on error
+  }
+};
+
+/**
+ * Creates multiple output formats for a JSON string
+ * @param jsonString - The JSON string to process
+ * @returns Object with different JSON formats
+ */
+export const createJsonOutputFormats = (jsonString: string): {
+  compact: string;
+  escaped: string;
+} => {
+  try {
+    if (!jsonString.trim()) {
+      return { compact: '', escaped: '' };
+    }
+    
+    // Parse to ensure it's valid JSON
+    const parsedJson = JSON.parse(jsonString);
+    
+    // Create compact format (no whitespace)
+    const compact = JSON.stringify(parsedJson);
+    
+    // Create escaped format
+    const escaped = escapeJsonString(jsonString);
+    
+    return {
+      compact,
+      escaped
+    };
+  } catch (error) {
+    console.error('Error creating JSON output formats:', error);
+    return { compact: '', escaped: '' };
+  }
+};

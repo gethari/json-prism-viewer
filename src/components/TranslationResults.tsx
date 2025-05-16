@@ -7,6 +7,7 @@ import { findPotentialTypos } from '@/utils/translationUtils';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Check, Copy, FileJson, Loader, RefreshCw } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
+import EscapedJsonView from '@/components/EscapedJsonView';
 
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string; existsInTranslations: boolean }[];
@@ -157,6 +158,9 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               </TabsTrigger>
               <TabsTrigger value="config" className="text-xs sm:text-sm">
                 Updated Configuration JSON
+              </TabsTrigger>
+              <TabsTrigger value="formats" className="text-xs sm:text-sm">
+                Export Formats
               </TabsTrigger>
             </TabsList>
 
@@ -385,6 +389,36 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                 <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[400px]">
                   {updatedConfigJsonString}
                 </pre>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="formats">
+              <div className="space-y-4">
+                <div className="border rounded-md p-4 mb-4">
+                  <h3 className="text-sm font-medium mb-4">JSON Output Formats</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select the output format you need. The compact format removes all whitespace while the escaped format prepares the JSON for inclusion in string literals.
+                  </p>
+                  
+                  <div className="border-t pt-4">
+                    <h4 className="text-xs font-medium mb-2">Full Translation Output</h4>
+                    <EscapedJsonView originalJson={""} modifiedJson={fullTranslationsJson} />
+                  </div>
+                  
+                  {missingTranslationsJson && (
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="text-xs font-medium mb-2">Missing Translations Output</h4>
+                      <EscapedJsonView originalJson={""} modifiedJson={missingTranslationsJson} />
+                    </div>
+                  )}
+                  
+                  {updatedConfigJsonString && (
+                    <div className="border-t pt-4 mt-4">
+                      <h4 className="text-xs font-medium mb-2">Updated Config Output</h4>
+                      <EscapedJsonView originalJson={""} modifiedJson={updatedConfigJsonString} />
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
           </Tabs>

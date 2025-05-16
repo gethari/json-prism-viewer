@@ -19,9 +19,10 @@ interface JsonInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  className?: string; // Added className prop to the interface
 }
 
-const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder, disabled = false }) => {
+const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder, disabled = false, className }) => {
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
   const [textareaValue, setTextareaValue] = useState(value);
@@ -141,7 +142,7 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
   }, [value]);
 
   return (
-    <Card className="w-full">
+    <Card className={`w-full ${className || ''}`}>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">

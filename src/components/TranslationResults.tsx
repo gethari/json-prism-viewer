@@ -5,28 +5,40 @@ import { useToast } from '@/hooks/use-toast';
 import { safeStringify, stringifyWithUnicodeQuotes } from '@/utils/jsonUtils';
 import { findPotentialTypos } from '@/utils/translationUtils';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Check, Copy, FileJson, Loader, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Check, Copy, FileJson, Loader, RefreshCw, Eye, EyeOff, Keyboard } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import EscapedJsonView from '@/components/EscapedJsonView';
+import { Switch } from '@/components/ui/switch';
 
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string; existsInTranslations: boolean }[];
-  ignoredFields?: string[]; // New prop for ignored fields
+  ignoredFields?: string[];
   translationData: Record<string, string>;
   updatedConfigJson?: any;
   onRevalidate?: () => void;
   isProcessing?: boolean;
+  showPotentialTypos?: boolean;
+  setShowPotentialTypos?: (show: boolean) => void;
+  showFullTranslations?: boolean;
+  setShowFullTranslations?: (show: boolean) => void;
+  isMac?: boolean;
 }
 
 const TranslationResults: React.FC<TranslationResultsProps> = ({
   missingTranslations,
-  ignoredFields = [], // Default to empty array
+  ignoredFields = [],
   translationData,
   updatedConfigJson,
   onRevalidate,
   isProcessing = false,
+  showPotentialTypos = false,
+  setShowPotentialTypos = () => {},
+  showFullTranslations = false,
+  setShowFullTranslations = () => {},
+  isMac = false,
 }) => {
   const { toast } = useToast();
+  const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl';
 
   // Generate the full updated translation object
   const updatedTranslations = { ...translationData };
@@ -104,30 +116,77 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
             )}
           </div>
 
-          {missingTranslations.length > 0 && onRevalidate && (
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 w-full sm:w-auto"
-              onClick={onRevalidate}
-              disabled={isProcessing}
-              title="Update configuration with translation keys and add missing entries to translation file"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Apply Updates & Revalidate
-                </>
-              )}
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center text-xs">
+              <Keyboard className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+              <span className="text-gray-500">{modifierKeyDisplay}+R revalidate</span>
+            </div>
+            
+            {missingTranslations.length > 0 && onRevalidate && (
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 w-full sm:w-auto"
+                onClick={onRevalidate}
+                disabled={isProcessing}
+                title="Update configuration with translation keys and add missing entries to translation file"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Apply Updates & Revalidate
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex flex-wrap gap-3 justify-end">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-typos"
+                checked={showPotentialTypos}
+                onCheckedChange={setShowPotentialTypos}
+              />
+              <label htmlFor="show-typos" className="text-sm flex items-center cursor-pointer">
+                {showPotentialTypos ? (
+                  <Eye className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                )}
+                Show Potential Typos
+                <span className="text-xs ml-2 text-gray-500">({modifierKeyDisplay}+T)</span>
+              </label>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-full-translations"
+                checked={showFullTranslations}
+                onCheckedChange={setShowFullTranslations}
+              />
+              <label htmlFor="show-full-translations" className="text-sm flex items-center cursor-pointer">
+                {showFullTranslations ? (
+                  <Eye className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                )}
+                Show Full Translations
+                <span className="text-xs ml-2 text-gray-500">({modifierKeyDisplay}+F)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        
         {missingTranslations.length === 0 && ignoredFields.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-green-600 dark:text-green-400 font-medium">
@@ -155,20 +214,19 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                   Ignored Fields
                 </TabsTrigger>
               )}
-              {potentialTypos.length > 0 && (
+              {potentialTypos.length > 0 && showPotentialTypos && (
                 <TabsTrigger value="typos" className="flex items-center text-xs sm:text-sm">
                   <AlertTriangle className="h-3 w-3 mr-1 text-amber-500" />
                   Potential Typos
                 </TabsTrigger>
               )}
-              <TabsTrigger value="full" className="text-xs sm:text-sm">
-                Full Updated Translations
-              </TabsTrigger>
+              {showFullTranslations && (
+                <TabsTrigger value="full" className="text-xs sm:text-sm">
+                  Full Updated Translations
+                </TabsTrigger>
+              )}
               <TabsTrigger value="config" className="text-xs sm:text-sm">
                 Updated Configuration JSON
-              </TabsTrigger>
-              <TabsTrigger value="formats" className="text-xs sm:text-sm">
-                Export Formats
               </TabsTrigger>
             </TabsList>
 
@@ -268,6 +326,17 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
                     </ul>
                   </div>
                 )}
+
+                {/* JSON Output formats for missing translations */}
+                {actuallyMissing.length > 0 && (
+                  <div className="mt-4 border rounded-md p-4">
+                    <h4 className="text-sm font-medium mb-2">Export Format Options</h4>
+                    <EscapedJsonView 
+                      originalJson=""
+                      modifiedJson={missingTranslationsJson}
+                    />
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -351,7 +420,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               </TabsContent>
             )}
 
-            {potentialTypos.length > 0 && (
+            {potentialTypos.length > 0 && showPotentialTypos && (
               <TabsContent value="typos">
                 <div className="space-y-4">
                   <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
@@ -407,25 +476,36 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               </TabsContent>
             )}
 
-            <TabsContent value="full">
-              <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                  <h3 className="text-sm font-medium">Full Updated Translation File</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(fullTranslationsJson, 'full translation file')}
-                    disabled={isProcessing}
-                    className="whitespace-nowrap"
-                  >
-                    <Copy className="h-4 w-4 mr-1" /> Copy JSON
-                  </Button>
+            {showFullTranslations && (
+              <TabsContent value="full">
+                <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
+                  <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                    <h3 className="text-sm font-medium">Full Updated Translation File</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopy(fullTranslationsJson, 'full translation file')}
+                      disabled={isProcessing}
+                      className="whitespace-nowrap"
+                    >
+                      <Copy className="h-4 w-4 mr-1" /> Copy JSON
+                    </Button>
+                  </div>
+                  <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[500px] max-w-full break-words whitespace-pre-wrap">
+                    {fullTranslationsJson}
+                  </pre>
+                  
+                  {/* JSON Output formats for full translations */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2">Export Format Options</h4>
+                    <EscapedJsonView 
+                      originalJson=""
+                      modifiedJson={fullTranslationsJson}
+                    />
+                  </div>
                 </div>
-                <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[500px] max-w-full break-words whitespace-pre-wrap">
-                  {fullTranslationsJson}
-                </pre>
-              </div>
-            </TabsContent>
+              </TabsContent>
+            )}
 
             <TabsContent value="config">
               <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
@@ -458,35 +538,6 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="formats">
-              <div className="space-y-4">
-                <div className="border rounded-md p-4 mb-4">
-                  <h3 className="text-sm font-medium mb-4">JSON Output Formats</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Select the output format you need. The compact format removes all whitespace while the escaped format prepares the JSON for inclusion in string literals.
-                  </p>
-                  
-                  <div className="border-t pt-4">
-                    <h4 className="text-xs font-medium mb-2">Full Translation Output</h4>
-                    <EscapedJsonView originalJson={""} modifiedJson={fullTranslationsJson} />
-                  </div>
-                  
-                  {missingTranslationsJson && (
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="text-xs font-medium mb-2">Missing Translations Output</h4>
-                      <EscapedJsonView originalJson={""} modifiedJson={missingTranslationsJson} />
-                    </div>
-                  )}
-                  
-                  {updatedConfigJsonString && (
-                    <div className="border-t pt-4 mt-4">
-                      <h4 className="text-xs font-medium mb-2">Updated Config Output</h4>
-                      <EscapedJsonView originalJson={""} modifiedJson={updatedConfigJsonString} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
         )}
       </CardContent>
@@ -494,6 +545,15 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
         <div className="px-6 pb-6">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-3 text-sm text-blue-700 dark:text-blue-300">
             <p>
+              <strong>Keyboard Shortcuts:</strong>
+            </p>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+R</kbd> - Apply Updates & Revalidate</li>
+              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+T</kbd> - Toggle Potential Typos Display</li>
+              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+F</kbd> - Toggle Full Translations Display</li>
+              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+E</kbd> - Toggle Editor Read/Edit Mode</li>
+            </ul>
+            <p className="mt-2">
               <strong>Revalidate Button:</strong> Clicking "Apply Updates & Revalidate" will:
             </p>
             <ul className="list-disc pl-5 mt-1 space-y-1">

@@ -23,17 +23,58 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
     changes: number;
   }>({ additions: 0, deletions: 0, changes: 0 });
   
+  // Detect OS for keyboard shortcuts
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  
   useEffect(() => {
     // Calculate diff summary
     setSummary(calculateDiffSummary(originalJson, modifiedJson));
-  }, [originalJson, modifiedJson]);
+    
+    // Add keyboard shortcut for toggling between diff and split view
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+      
+      // Ctrl+D / Cmd+D - Toggle between diff views
+      if (modKey && e.key === 'd') {
+        e.preventDefault();
+        setActiveTab(prev => prev === 'diff' ? 'split' : 'diff');
+        toast({
+          title: `Switched to ${activeTab === 'diff' ? 'Split' : 'Inline'} View`,
+          description: `Using keyboard shortcut ${isMac ? '⌘' : 'Ctrl'}+D`,
+        });
+      }
+      
+      // Ctrl+Plus / Cmd+Plus - Increase font size
+      if (modKey && e.key === '+') {
+        e.preventDefault();
+        increaseFontSize();
+      }
+      
+      // Ctrl+Minus / Cmd+Minus - Decrease font size
+      if (modKey && e.key === '-') {
+        e.preventDefault();
+        decreaseFontSize();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [originalJson, modifiedJson, activeTab, isMac, toast]);
 
   const increaseFontSize = () => {
     setFontSize(prev => Math.min(prev + 2, 24));
+    toast({
+      title: `Font Size: ${fontSize + 2}px`,
+      description: `Using keyboard shortcut ${isMac ? '⌘' : 'Ctrl'}+Plus`,
+    });
   };
 
   const decreaseFontSize = () => {
     setFontSize(prev => Math.max(prev - 2, 10));
+    toast({
+      title: `Font Size: ${fontSize - 2}px`,
+      description: `Using keyboard shortcut ${isMac ? '⌘' : 'Ctrl'}+Minus`,
+    });
   };
 
   const openInNewTab = () => {
@@ -43,8 +84,6 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
   const options = {
     renderSideBySide: activeTab === 'split',
     fontSize: fontSize,
-    readOnly: true,
-    formatOnPaste: true,
     folding: true,
     automaticLayout: true,
     scrollBeyondLastLine: false,
@@ -92,11 +131,16 @@ const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({ originalJson, modif
                 options={options}
                 activeTab={activeTab}
               />
-              {activeTab === 'split' && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Note: For better split view experience, you can use the "Open in new tab" button in the top right.
-                </div>
-              )}
+              <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{isMac ? '⌘' : 'Ctrl'}+D</kbd>
+                <span>Toggle between Inline/Split view</span>
+                <span className="mx-2">•</span>
+                <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{isMac ? '⌘' : 'Ctrl'}+E</kbd>
+                <span>Toggle edit mode</span>
+                <span className="mx-2">•</span>
+                <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{isMac ? '⌘' : 'Ctrl'}+Plus/Minus</kbd>
+                <span>Change font size</span>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

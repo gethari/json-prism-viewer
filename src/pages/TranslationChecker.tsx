@@ -19,6 +19,28 @@ import { parseJson } from '@/utils/jsonUtils';
 import { findMissingTranslations, updateConfigWithTranslationKeys } from '@/utils/translationUtils';
 import TranslationResults from '@/components/TranslationResults';
 
+// Add keyboard shortcut handler
+const useKeyboardShortcuts = (shortcuts: { key: string; ctrlKey?: boolean; metaKey?: boolean; callback: () => void }[]) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      for (const shortcut of shortcuts) {
+        if (
+          e.key.toLowerCase() === shortcut.key.toLowerCase() &&
+          (!shortcut.ctrlKey || e.ctrlKey) &&
+          (!shortcut.metaKey || e.metaKey)
+        ) {
+          e.preventDefault();
+          shortcut.callback();
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shortcuts]);
+};
+
 const TranslationCheckerContent = () => {
   const [configJson, setConfigJson] = useState('');
   const [translationJson, setTranslationJson] = useState('');
@@ -29,9 +51,61 @@ const TranslationCheckerContent = () => {
   const [showResults, setShowResults] = useState(false);
   const [updatedConfigJson, setUpdatedConfigJson] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPotentialTypos, setShowPotentialTypos] = useState(false);
+  const [showFullTranslations, setShowFullTranslations] = useState(false);
   const { toast } = useToast();
   const topRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // OS detection for keyboard shortcuts
+  const isMac = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    }
+    return false;
+  }, []);
+
+  const modifierKey = isMac ? 'metaKey' : 'ctrlKey';
+  const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl';
+
+  // Register keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'r',
+      [modifierKey]: true,
+      callback: () => {
+        if (updatedConfigJson && !isProcessing) {
+          handleRevalidate();
+          toast({
+            title: 'Revalidation Triggered',
+            description: `Using keyboard shortcut ${modifierKeyDisplay}+R`,
+          });
+        }
+      },
+    },
+    {
+      key: 't',
+      [modifierKey]: true,
+      callback: () => {
+        setShowPotentialTypos(prev => !prev);
+        toast({
+          title: `Potential Typos ${showPotentialTypos ? 'Hidden' : 'Shown'}`,
+          description: `Using keyboard shortcut ${modifierKeyDisplay}+T`,
+        });
+      },
+    },
+    {
+      key: 'f',
+      [modifierKey]: true,
+      callback: () => {
+        setShowFullTranslations(prev => !prev);
+        toast({
+          title: `Full Translations ${showFullTranslations ? 'Hidden' : 'Shown'}`,
+          description: `Using keyboard shortcut ${modifierKeyDisplay}+F`,
+        });
+      },
+    },
+  ]);
 
   // Effect to check translations when both inputs are available
   useEffect(() => {
@@ -179,6 +253,11 @@ const TranslationCheckerContent = () => {
                   updatedConfigJson={updatedConfigJson}
                   onRevalidate={handleRevalidate}
                   isProcessing={isProcessing}
+                  showPotentialTypos={showPotentialTypos}
+                  setShowPotentialTypos={setShowPotentialTypos}
+                  showFullTranslations={showFullTranslations}
+                  setShowFullTranslations={setShowFullTranslations}
+                  isMac={isMac}
                 />
               )}
             </div>
@@ -200,4 +279,3 @@ const TranslationChecker = () => {
 };
 
 export default TranslationChecker;
-

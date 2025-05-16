@@ -10,14 +10,15 @@ import JsonCompare from './pages/JsonCompare';
 import TranslationChecker from './pages/TranslationChecker';
 
 const queryClient = new QueryClient();
-
+// Using process.env.NODE_ENV to determine if in production
+const basename = process.env.NODE_ENV === 'production' ? '/json-prism-viewer' : '';
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="json-prism-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename={basename}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/json-compare" element={<JsonCompare />} />

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,8 +8,17 @@ import { findPotentialTypos } from '@/utils/translationUtils';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Check, Copy, FileJson, Loader, RefreshCw, Eye, EyeOff, Keyboard } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
-import EscapedJsonView from '@/components/EscapedJsonView';
 import { Switch } from '@/components/ui/switch';
+
+// Import refactored components
+import TranslationSummary from './translation/TranslationSummary';
+import MissingTranslationsPanel from './translation/MissingTranslationsPanel';
+import NeedKeysPanel from './translation/NeedKeysPanel';
+import IgnoredFieldsPanel from './translation/IgnoredFieldsPanel';
+import PotentialTyposPanel from './translation/PotentialTyposPanel';
+import FullTranslationsPanel from './translation/FullTranslationsPanel';
+import UpdatedConfigPanel from './translation/UpdatedConfigPanel';
+import KeyboardShortcutsInfo from './translation/KeyboardShortcutsInfo';
 
 interface TranslationResultsProps {
   missingTranslations: { key: string; value: string; existsInTranslations: boolean }[];
@@ -38,7 +48,7 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
   isMac = false,
 }) => {
   const { toast } = useToast();
-  const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl';
+  const modifierKeyDisplay = isMac ? 'Option' : 'Alt';
 
   // Generate the full updated translation object
   const updatedTranslations = { ...translationData };
@@ -66,6 +76,47 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
       setPotentialTypos(typos);
     }
   }, [updatedConfigJson, translationData]);
+
+  // Register Alt key shortcuts instead of Ctrl/Cmd
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process if Alt key is pressed
+      if (e.altKey) {
+        // Alt+R - Revalidate
+        if (e.key.toLowerCase() === 'r' && onRevalidate && !isProcessing) {
+          e.preventDefault();
+          onRevalidate();
+          toast({
+            title: 'Revalidation Triggered',
+            description: `Using keyboard shortcut ${modifierKeyDisplay}+R`,
+          });
+        }
+        
+        // Alt+T - Toggle potential typos
+        if (e.key.toLowerCase() === 't') {
+          e.preventDefault();
+          setShowPotentialTypos(!showPotentialTypos);
+          toast({
+            title: `Potential Typos ${showPotentialTypos ? 'Hidden' : 'Shown'}`,
+            description: `Using keyboard shortcut ${modifierKeyDisplay}+T`,
+          });
+        }
+        
+        // Alt+F - Toggle full translations
+        if (e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          setShowFullTranslations(!showFullTranslations);
+          toast({
+            title: `Full Translations ${showFullTranslations ? 'Hidden' : 'Shown'}`,
+            description: `Using keyboard shortcut ${modifierKeyDisplay}+F`,
+          });
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPotentialTypos, showFullTranslations, onRevalidate, isProcessing, setShowPotentialTypos, setShowFullTranslations, modifierKeyDisplay, toast]);
 
   // Get unicode escaping settings
   const { unicodeQuoteEscaping, escapeKeysInJson } = useSettings();
@@ -231,340 +282,64 @@ const TranslationResults: React.FC<TranslationResultsProps> = ({
             </TabsList>
 
             <TabsContent value="summary">
-              <div className="space-y-4">
-                <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium">Translation Status Summary</h3>
-                  </div>
-                  <ul className="list-disc pl-5 space-y-2 text-sm">
-                    <li>
-                      Total items to process:{' '}
-                      <span className="font-semibold">{missingTranslations.length}</span>
-                    </li>
-                    <li>
-                      Missing translations:{' '}
-                      <span className="font-semibold text-red-500">{actuallyMissing.length}</span>
-                      {actuallyMissing.length > 0 && (
-                        <span className="ml-2 text-gray-500">
-                          (need to be added to translation file)
-                        </span>
-                      )}
-                    </li>
-                    <li>
-                      Existing translations without keys:{' '}
-                      <span className="font-semibold text-amber-500">{needKeyOnly.length}</span>
-                      {needKeyOnly.length > 0 && (
-                        <span className="ml-2 text-gray-500">(need to add keys to config)</span>
-                      )}
-                    </li>
-                    {ignoredFields.length > 0 && (
-                      <li>
-                        Fields ignored (with fieldName property):{' '}
-                        <span className="font-semibold text-blue-500">
-                          {ignoredFields.length}
-                        </span>
-                        <span className="ml-2 text-gray-500">
-                          (these fields are skipped for translation)
-                        </span>
-                      </li>
-                    )}
-                    {potentialTypos.length > 0 && (
-                      <li>
-                        Potential typos or inconsistencies:{' '}
-                        <span className="font-semibold text-amber-500">
-                          {potentialTypos.length}
-                        </span>
-                        <span className="ml-2 text-gray-500">
-                          (similar but not identical strings)
-                        </span>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              </div>
+              <TranslationSummary 
+                actuallyMissing={actuallyMissing}
+                needKeyOnly={needKeyOnly}
+                ignoredFields={ignoredFields}
+                potentialTypos={potentialTypos}
+              />
             </TabsContent>
 
             <TabsContent value="missing">
-              <div className="space-y-4">
-                <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                  <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                    <h3 className="text-sm font-medium">
-                      Missing Translations ({actuallyMissing.length})
-                    </h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(missingTranslationsJson, 'missing translations')}
-                      disabled={isProcessing || actuallyMissing.length === 0}
-                      className="whitespace-nowrap"
-                    >
-                      <Copy className="h-4 w-4 mr-1" /> Copy JSON
-                    </Button>
-                  </div>
-                  {actuallyMissing.length === 0 ? (
-                    <p className="text-sm text-green-600">No missing translations.</p>
-                  ) : (
-                    <pre className="text-xs overflow-auto max-h-96 p-2 rounded bg-gray-100 dark:bg-gray-800">
-                      {missingTranslationsJson}
-                    </pre>
-                  )}
-                </div>
-
-                {actuallyMissing.length > 0 && (
-                  <div className="border rounded-md p-4 space-y-2">
-                    <h3 className="text-sm font-medium">Missing Keys List</h3>
-                    <ul className="space-y-1">
-                      {actuallyMissing.map(({ key, value }) => (
-                        <li
-                          key={`actual-missing-${key}`}
-                          className="text-xs border-b pb-1 last:border-b-0 last:pb-0 flex justify-between"
-                        >
-                          <span className="font-mono">{key}</span>
-                          <span className="text-muted-foreground">"{value}"</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* JSON Output formats for missing translations */}
-                {actuallyMissing.length > 0 && (
-                  <div className="mt-4 border rounded-md p-4">
-                    <h4 className="text-sm font-medium mb-2">Export Format Options</h4>
-                    <EscapedJsonView 
-                      originalJson=""
-                      modifiedJson={missingTranslationsJson}
-                    />
-                  </div>
-                )}
-              </div>
+              <MissingTranslationsPanel
+                actuallyMissing={actuallyMissing}
+                missingTranslationsJson={missingTranslationsJson}
+                handleCopy={handleCopy}
+                isProcessing={isProcessing}
+              />
             </TabsContent>
 
             <TabsContent value="needKeys">
-              <div className="space-y-4">
-                <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-medium">
-                      Translations That Need Keys in Config ({needKeyOnly.length})
-                    </h3>
-                  </div>
-                  {needKeyOnly.length === 0 ? (
-                    <p className="text-sm text-green-600">
-                      All labels have translation keys in the config.
-                    </p>
-                  ) : (
-                    <div className="overflow-auto max-h-96 text-sm">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-100 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Label
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Translation Key
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          {needKeyOnly.map(item => (
-                            <tr key={`needkey-${item.key}`}>
-                              <td className="px-4 py-2 whitespace-nowrap text-xs">{item.value}</td>
-                              <td className="px-4 py-2 whitespace-nowrap text-xs font-mono">
-                                {item.key}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <NeedKeysPanel needKeyOnly={needKeyOnly} />
             </TabsContent>
 
             {ignoredFields.length > 0 && (
               <TabsContent value="ignoredFields">
-                <div className="space-y-4">
-                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-medium flex items-center">
-                        <FileJson className="h-4 w-4 mr-2 text-blue-500" />
-                        Fields Ignored for Translation ({ignoredFields.length})
-                      </h3>
-                    </div>
-                    <p className="text-sm mb-3 text-gray-500">
-                      These fields contain a <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">fieldName</code> property and were skipped for translation processing as requested.
-                    </p>
-                    <div className="overflow-auto max-h-96 text-sm">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-100 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Field Name
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          {ignoredFields.map(fieldName => (
-                            <tr key={`ignored-${fieldName}`}>
-                              <td className="px-4 py-2 whitespace-nowrap text-xs font-mono">
-                                {fieldName}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                <IgnoredFieldsPanel ignoredFields={ignoredFields} />
               </TabsContent>
             )}
 
             {potentialTypos.length > 0 && showPotentialTypos && (
               <TabsContent value="typos">
-                <div className="space-y-4">
-                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-medium flex items-center">
-                        <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
-                        Potential Typos or Inconsistencies ({potentialTypos.length})
-                      </h3>
-                    </div>
-                    <p className="text-sm mb-3 text-gray-500">
-                      These are labels and translations with high similarity but slight differences.
-                      They might indicate typos or intentional variations.
-                    </p>
-                    <div className="overflow-auto max-h-96 text-sm">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead className="bg-gray-100 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Label in Config
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Similar Translation
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              Match %
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                          {potentialTypos.map(typo => (
-                            <tr
-                              key={`typo-${typo.configLabel}-${typo.translationText}`}
-                              className={
-                                typo.similarity > 95 ? 'bg-amber-50 dark:bg-amber-900/20' : ''
-                              }
-                            >
-                              <td className="px-4 py-2 whitespace-nowrap text-xs">
-                                {typo.configLabel}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-xs">
-                                {typo.translationText}
-                              </td>
-                              <td className="px-4 py-2 whitespace-nowrap text-xs font-mono">
-                                {typo.similarity}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                <PotentialTyposPanel potentialTypos={potentialTypos} />
               </TabsContent>
             )}
 
             {showFullTranslations && (
               <TabsContent value="full">
-                <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                  <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                    <h3 className="text-sm font-medium">Full Updated Translation File</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(fullTranslationsJson, 'full translation file')}
-                      disabled={isProcessing}
-                      className="whitespace-nowrap"
-                    >
-                      <Copy className="h-4 w-4 mr-1" /> Copy JSON
-                    </Button>
-                  </div>
-                  <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[500px] max-w-full break-words whitespace-pre-wrap">
-                    {fullTranslationsJson}
-                  </pre>
-                  
-                  {/* JSON Output formats for full translations */}
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium mb-2">Export Format Options</h4>
-                    <EscapedJsonView 
-                      originalJson=""
-                      modifiedJson={fullTranslationsJson}
-                    />
-                  </div>
-                </div>
+                <FullTranslationsPanel
+                  fullTranslationsJson={fullTranslationsJson}
+                  handleCopy={handleCopy}
+                  isProcessing={isProcessing}
+                />
               </TabsContent>
             )}
 
             <TabsContent value="config">
-              <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900">
-                <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                  <h3 className="text-sm font-medium">
-                    Updated Configuration JSON (with translation keys)
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(updatedConfigJsonString, 'updated configuration')}
-                    disabled={isProcessing}
-                    className="whitespace-nowrap"
-                  >
-                    <Copy className="h-4 w-4 mr-1" /> Copy JSON
-                  </Button>
-                </div>
-                <pre className="overflow-auto p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs h-[400px]">
-                  {updatedConfigJsonString}
-                </pre>
-                
-                {/* Add JSON Output formats for config JSON */}
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Export Format Options</h4>
-                  <EscapedJsonView 
-                    originalJson=""
-                    modifiedJson={updatedConfigJsonString}
-                  />
-                </div>
-              </div>
+              <UpdatedConfigPanel
+                updatedConfigJsonString={updatedConfigJsonString}
+                handleCopy={handleCopy}
+                isProcessing={isProcessing}
+              />
             </TabsContent>
-
           </Tabs>
         )}
       </CardContent>
-      {missingTranslations.length > 0 && (
-        <div className="px-6 pb-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-3 text-sm text-blue-700 dark:text-blue-300">
-            <p>
-              <strong>Keyboard Shortcuts:</strong>
-            </p>
-            <ul className="list-disc pl-5 mt-1 space-y-1">
-              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+R</kbd> - Apply Updates & Revalidate</li>
-              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+T</kbd> - Toggle Potential Typos Display</li>
-              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+F</kbd> - Toggle Full Translations Display</li>
-              <li><kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-800 rounded text-xs">{modifierKeyDisplay}+E</kbd> - Toggle Editor Read/Edit Mode</li>
-            </ul>
-            <p className="mt-2">
-              <strong>Revalidate Button:</strong> Clicking "Apply Updates & Revalidate" will:
-            </p>
-            <ul className="list-disc pl-5 mt-1 space-y-1">
-              <li>Update your configuration input with all missing translation keys</li>
-              <li>Add the missing translations to your translation file</li>
-              <li>Auto-scroll to the top of the page</li>
-              <li>Re-process the data to verify all keys are now present</li>
-            </ul>
-          </div>
-        </div>
-      )}
+      
+      <KeyboardShortcutsInfo 
+        modifierKeyDisplay={modifierKeyDisplay} 
+        missingTranslationsExist={missingTranslations.length > 0} 
+      />
     </Card>
   );
 };

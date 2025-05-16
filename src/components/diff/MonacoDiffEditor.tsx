@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DiffEditor } from '@monaco-editor/react';
 import { Toggle } from '@/components/ui/toggle';
 import { Keyboard, Lock, Unlock } from 'lucide-react';
@@ -26,7 +26,21 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({ originalJson, modif
 
   // Detect OS for keyboard shortcuts display
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-  const modifierKey = isMac ? '⌘' : 'Ctrl';
+  const altKey = isMac ? 'Option' : 'Alt';
+
+  // Add keyboard shortcut handler for Alt+E
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt+E to toggle edit mode
+      if (e.altKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        toggleReadOnly();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="relative">
@@ -47,7 +61,7 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({ originalJson, modif
       <div className="absolute top-2 right-3 flex items-center gap-2 bg-gray-800/80 dark:bg-gray-900/80 backdrop-blur-sm px-2 py-1 rounded-md z-10">
         <div className="flex items-center mr-2">
           <Keyboard className="h-3.5 w-3.5 mr-1 text-gray-400" />
-          <span className="text-xs text-gray-300">{modifierKey}+E toggle edit</span>
+          <span className="text-xs text-gray-300">{altKey}+E toggle edit</span>
         </div>
         <Toggle
           pressed={!isReadOnly}

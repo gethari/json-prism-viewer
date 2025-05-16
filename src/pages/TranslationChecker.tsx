@@ -19,15 +19,14 @@ import { parseJson } from '@/utils/jsonUtils';
 import { findMissingTranslations, updateConfigWithTranslationKeys } from '@/utils/translationUtils';
 import TranslationResults from '@/components/TranslationResults';
 
-// Add keyboard shortcut handler
-const useKeyboardShortcuts = (shortcuts: { key: string; ctrlKey?: boolean; metaKey?: boolean; callback: () => void }[]) => {
+// Add keyboard shortcut handler with Alt key instead of Ctrl/Cmd
+const useKeyboardShortcuts = (shortcuts: { key: string; altKey?: boolean; callback: () => void }[]) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       for (const shortcut of shortcuts) {
         if (
           e.key.toLowerCase() === shortcut.key.toLowerCase() &&
-          (!shortcut.ctrlKey || e.ctrlKey) &&
-          (!shortcut.metaKey || e.metaKey)
+          (!shortcut.altKey || e.altKey)
         ) {
           e.preventDefault();
           shortcut.callback();
@@ -65,14 +64,13 @@ const TranslationCheckerContent = () => {
     return false;
   }, []);
 
-  const modifierKey = isMac ? 'metaKey' : 'ctrlKey';
-  const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl';
+  const modifierKeyDisplay = isMac ? 'Option' : 'Alt';
 
-  // Register keyboard shortcuts
+  // Register keyboard shortcuts using Alt/Option key instead of Ctrl/Cmd
   useKeyboardShortcuts([
     {
       key: 'r',
-      [modifierKey]: true,
+      altKey: true,
       callback: () => {
         if (updatedConfigJson && !isProcessing) {
           handleRevalidate();
@@ -85,7 +83,7 @@ const TranslationCheckerContent = () => {
     },
     {
       key: 't',
-      [modifierKey]: true,
+      altKey: true,
       callback: () => {
         setShowPotentialTypos(prev => !prev);
         toast({
@@ -96,7 +94,7 @@ const TranslationCheckerContent = () => {
     },
     {
       key: 'f',
-      [modifierKey]: true,
+      altKey: true,
       callback: () => {
         setShowFullTranslations(prev => !prev);
         toast({

@@ -1,17 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Trash, Copy, Info } from 'lucide-react';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useSettings } from '@/contexts/SettingsContext';
+import { parseJsonSafely } from '@/utils/jsonFormatter';
+import JsonInputHeader from './JsonInputHeader';
+import JsonInputFooter from './JsonInputFooter';
 
 interface JsonInputProps {
   title: string;
@@ -19,10 +14,17 @@ interface JsonInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
-  className?: string; // Added className prop to the interface
+  className?: string;
 }
 
-const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placeholder, disabled = false, className }) => {
+const JsonInput: React.FC<JsonInputProps> = ({
+  title,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  className,
+}) => {
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
   const [textareaValue, setTextareaValue] = useState(value);
@@ -48,55 +50,6 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
     if (result.isValid && result.parsedValue) {
       onChange(result.parsedValue);
     }
-  };
-
-  const parseJsonSafely = (input: string) => {
-    if (!input.trim()) {
-      return { isValid: true, parsed: false, parsedValue: '' };
-    }
-
-    // Approach 1: Direct parsing (for valid JSON)
-    try {
-      const parsed = JSON.parse(input);
-      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
-    } catch (e) {
-      // Continue to other approaches if direct parsing fails
-    }
-    
-    // Approach 2: For escaped JSON strings with escaped quotes like {\"key\":\"value\"}
-    try {
-      // Replace escaped quotes with actual quotes
-      const fixedJson = input.replace(/\\"/g, '"');
-      const parsed = JSON.parse(fixedJson);
-      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
-    } catch (e) {
-      // Continue to other approaches if this fails
-    }
-    
-    // Approach 3: For JSON strings that need to be unescaped first
-    try {
-      // Try to parse as a JSON string (with outer quotes)
-      const unescaped = JSON.parse(`"${input.replace(/"/g, '\\"')}"`);
-      try {
-        const parsed = JSON.parse(unescaped);
-        return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
-      } catch (e) {
-        // If unescaped string isn't valid JSON
-      }
-    } catch (e) {
-      // Not a valid JSON string that can be unescaped
-    }
-    
-    // Approach 4: Some APIS might double-escape the JSON
-    try {
-      const doubleUnescaped = input.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
-      const parsed = JSON.parse(doubleUnescaped);
-      return { isValid: true, parsed: true, parsedValue: JSON.stringify(parsed, null, 2) };
-    } catch (e) {
-      // All approaches failed
-    }
-    
-    return { isValid: false, parsed: false, parsedValue: null };
   };
 
   const handleClear = () => {
@@ -143,43 +96,13 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
 
   return (
     <Card className={`w-full ${className || ''}`}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span>{title}</span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>JSON will be automatically processed for comparison. You can paste escaped or unescaped JSON.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <div className="space-x-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleCopy} 
-              disabled={!value || disabled}
-              title="Copy to clipboard"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleClear} 
-              disabled={!value || disabled}
-              title="Clear"
-            >
-              <Trash className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
+      <JsonInputHeader 
+        title={title}
+        value={value}
+        onCopy={handleCopy}
+        onClear={handleClear}
+        disabled={disabled}
+      />
       <CardContent>
         <Textarea
           value={textareaValue}
@@ -190,15 +113,10 @@ const JsonInput: React.FC<JsonInputProps> = ({ title, value, onChange, placehold
           disabled={disabled}
         />
       </CardContent>
-      <CardFooter className="flex flex-col items-start">
-        {!isValid && textareaValue && (
-          <p className="text-red-500 text-sm">Invalid JSON format</p>
-        )}
-        <p className="text-muted-foreground text-xs mt-2">
-          JSON will be automatically processed for comparison. Paste any valid JSON, escaped or unescaped.
-          {autoCompare ? " Auto-compare is enabled." : ""}
-        </p>
-      </CardFooter>
+      <JsonInputFooter 
+        isValid={isValid}
+        hasValue={!!textareaValue}
+      />
     </Card>
   );
 };

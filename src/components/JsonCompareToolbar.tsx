@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowDownToLine,
-  ArrowsUpDown,
+  ArrowUpDown,
   Copy,
   RefreshCw,
   Trash2
@@ -90,7 +90,7 @@ const JsonCompareToolbar: React.FC<JsonCompareToolbarProps> = ({
           onClick={handleSwap}
           disabled={!originalJson && !modifiedJson}
         >
-          <ArrowsUpDown className="mr-2 h-4 w-4" /> Swap
+          <ArrowUpDown className="mr-2 h-4 w-4" /> Swap
         </Button>
         <Button 
           variant="outline" 

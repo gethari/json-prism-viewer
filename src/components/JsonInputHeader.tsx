@@ -1,21 +1,16 @@
 
 import React from 'react';
+import { CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash, Copy, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Copy, X } from 'lucide-react';
 
 interface JsonInputHeaderProps {
   title: string;
   value: string;
   onCopy: () => void;
   onClear: () => void;
-  disabled: boolean;
+  disabled?: boolean;
+  fileSize?: string;
 }
 
 const JsonInputHeader: React.FC<JsonInputHeaderProps> = ({
@@ -23,45 +18,35 @@ const JsonInputHeader: React.FC<JsonInputHeaderProps> = ({
   value,
   onCopy,
   onClear,
-  disabled,
+  disabled = false,
+  fileSize = ''
 }) => {
   return (
-    <CardHeader>
-      <CardTitle className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <span>{title}</span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>JSON will be automatically processed for comparison. You can paste escaped or unescaped JSON.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <div className="space-x-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={onCopy} 
-            disabled={!value || disabled}
-            title="Copy to clipboard"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={onClear} 
-            disabled={!value || disabled}
-            title="Clear"
-          >
-            <Trash className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardTitle>
+    <CardHeader className="flex flex-row items-center justify-between py-3 px-4 border-b bg-muted/30">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <h3 className="text-sm font-medium flex-shrink-0">{title}</h3>
+        {fileSize && <span className="text-xs text-muted-foreground font-mono">({fileSize})</span>}
+      </div>
+      <div className="flex items-center space-x-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onCopy}
+          disabled={disabled || !value}
+          title="Copy to clipboard"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={onClear}
+          disabled={disabled || !value}
+          title="Clear content"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </CardHeader>
   );
 };

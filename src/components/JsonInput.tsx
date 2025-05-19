@@ -28,6 +28,7 @@ const JsonInput: React.FC<JsonInputProps> = ({
   const { toast } = useToast();
   const [isValid, setIsValid] = useState(true);
   const [textareaValue, setTextareaValue] = useState(value);
+  const [fileSize, setFileSize] = useState(0);
   const { autoCompare } = useSettings();
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -38,10 +39,12 @@ const JsonInput: React.FC<JsonInputProps> = ({
     if (!newValue.trim()) {
       setIsValid(true);
       onChange('');
+      setFileSize(0);
       return;
     }
     
     validateJson(newValue);
+    calculateSize(newValue);
   };
 
   const validateJson = (jsonString: string) => {
@@ -52,10 +55,17 @@ const JsonInput: React.FC<JsonInputProps> = ({
     }
   };
 
+  const calculateSize = (text: string) => {
+    // Calculate size in bytes (2 bytes per character in JavaScript strings)
+    const size = new Blob([text]).size;
+    setFileSize(size);
+  };
+
   const handleClear = () => {
     setTextareaValue('');
     onChange('');
     setIsValid(true);
+    setFileSize(0);
   };
 
   const handleCopy = () => {
@@ -80,6 +90,7 @@ const JsonInput: React.FC<JsonInputProps> = ({
       setTextareaValue(result.parsedValue);
       setIsValid(true);
       onChange(result.parsedValue);
+      calculateSize(result.parsedValue);
       
       const statusMessage = autoCompare ? "JSON formatted and will be automatically compared" : "JSON formatted. Click Compare to view differences";
       toast({
@@ -89,9 +100,23 @@ const JsonInput: React.FC<JsonInputProps> = ({
     }
   };
 
+  // Format the file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    } else if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    } else {
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+  };
+
   // Update textareaValue when the parent component updates the value prop
   useEffect(() => {
     setTextareaValue(value);
+    calculateSize(value);
   }, [value]);
 
   return (
@@ -102,6 +127,7 @@ const JsonInput: React.FC<JsonInputProps> = ({
         onCopy={handleCopy}
         onClear={handleClear}
         disabled={disabled}
+        fileSize={formatFileSize(fileSize)}
       />
       <CardContent>
         <Textarea

@@ -83,10 +83,11 @@ const JsonCompareToolbar: React.FC<JsonCompareToolbarProps> = ({
       const beforeParam = originalJson ? encodeURIComponent(btoa(unescape(encodeURIComponent(originalJson)))) : '';
       const afterParam = modifiedJson ? encodeURIComponent(btoa(unescape(encodeURIComponent(modifiedJson)))) : '';
       
-      // Create the URL with query parameters
+      // Create the URL with query parameters - include both path and search params
       const baseUrl = window.location.origin + window.location.pathname;
-      const queryString = `?before=${beforeParam}&after=${afterParam}#/json-compare`;
-      const shareUrl = baseUrl + queryString;
+      const queryString = `?before=${beforeParam}&after=${afterParam}`;
+      const hashRoute = window.location.hash || '#/json-compare'; // Preserve the hash route or default to json-compare
+      const shareUrl = baseUrl + queryString + hashRoute;
       
       // Copy to clipboard
       navigator.clipboard.writeText(shareUrl)

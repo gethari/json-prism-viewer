@@ -22,9 +22,19 @@ const JsonCompareContent = () => {
   const diffSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Parse URL parameters using React Router's useSearchParams
-    const beforeParam = searchParams.get('before');
-    const afterParam = searchParams.get('after');
+    // Get params either from React Router's useSearchParams or from the full URL
+    const getUrlParameter = (paramName: string): string | null => {
+      // First try React Router's searchParams
+      const routerParam = searchParams.get(paramName);
+      if (routerParam) return routerParam;
+      
+      // If not found, try getting from the full URL (fallback)
+      const url = new URL(window.location.href);
+      return url.searchParams.get(paramName);
+    };
+
+    const beforeParam = getUrlParameter('before');
+    const afterParam = getUrlParameter('after');
 
     let hasData = false;
 

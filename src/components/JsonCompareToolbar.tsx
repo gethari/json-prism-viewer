@@ -69,9 +69,19 @@ const JsonCompareToolbar: React.FC<JsonCompareToolbarProps> = ({
 
   const handleShareUrl = () => {
     try {
+      // Simple validation
+      if (!originalJson.trim() && !modifiedJson.trim()) {
+        toast({
+          title: "Nothing to share",
+          description: "Please add JSON content before generating a share URL.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Create base64 encoded versions of the JSON data
-      const beforeParam = originalJson ? encodeURIComponent(btoa(originalJson)) : '';
-      const afterParam = modifiedJson ? encodeURIComponent(btoa(modifiedJson)) : '';
+      const beforeParam = originalJson ? encodeURIComponent(btoa(unescape(encodeURIComponent(originalJson)))) : '';
+      const afterParam = modifiedJson ? encodeURIComponent(btoa(unescape(encodeURIComponent(modifiedJson)))) : '';
       
       // Create the URL with query parameters
       const baseUrl = window.location.origin + window.location.pathname;

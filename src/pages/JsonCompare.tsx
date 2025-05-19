@@ -32,24 +32,39 @@ const JsonCompareContent = () => {
       try {
         // First decode URI component
         const decoded = decodeURIComponent(beforeParam);
-
-        // Check if it's base64 encoded
-        let jsonData = null;
+        
         try {
-          // Try base64 decoding first
+          // Try base64 decoding
           const decodedBase64 = atob(decoded);
-          jsonData = parseJson(decodedBase64);
+          try {
+            // Try parsing as JSON directly
+            const jsonData = parseJson(decodedBase64);
+            setOriginalJson(safeStringify(jsonData));
+            hasData = true;
+          } catch (parseError) {
+            // If parsing fails, just use the decoded string as is
+            setOriginalJson(decodedBase64);
+            hasData = true;
+          }
         } catch (base64Error) {
           // If base64 decoding fails, try parsing directly
-          jsonData = parseJson(decoded);
-        }
-
-        if (jsonData) {
-          setOriginalJson(safeStringify(jsonData));
-          hasData = true;
+          try {
+            const jsonData = parseJson(decoded);
+            setOriginalJson(safeStringify(jsonData));
+            hasData = true;
+          } catch (parseError) {
+            // Use as-is if all parsing fails
+            setOriginalJson(decoded);
+            hasData = true;
+          }
         }
       } catch (e) {
-        console.error("Error parsing 'before' parameter:", e);
+        console.error("Error processing 'before' parameter:", e);
+        toast({
+          title: "Error processing URL parameter",
+          description: "Could not process the 'before' parameter from the URL.",
+          variant: "destructive",
+        });
       }
     }
 
@@ -57,24 +72,39 @@ const JsonCompareContent = () => {
       try {
         // First decode URI component
         const decoded = decodeURIComponent(afterParam);
-
-        // Check if it's base64 encoded
-        let jsonData = null;
+        
         try {
-          // Try base64 decoding first
+          // Try base64 decoding
           const decodedBase64 = atob(decoded);
-          jsonData = parseJson(decodedBase64);
+          try {
+            // Try parsing as JSON directly
+            const jsonData = parseJson(decodedBase64);
+            setModifiedJson(safeStringify(jsonData));
+            hasData = true;
+          } catch (parseError) {
+            // If parsing fails, just use the decoded string as is
+            setModifiedJson(decodedBase64);
+            hasData = true;
+          }
         } catch (base64Error) {
           // If base64 decoding fails, try parsing directly
-          jsonData = parseJson(decoded);
-        }
-
-        if (jsonData) {
-          setModifiedJson(safeStringify(jsonData));
-          hasData = true;
+          try {
+            const jsonData = parseJson(decoded);
+            setModifiedJson(safeStringify(jsonData));
+            hasData = true;
+          } catch (parseError) {
+            // Use as-is if all parsing fails
+            setModifiedJson(decoded);
+            hasData = true;
+          }
         }
       } catch (e) {
-        console.error("Error parsing 'after' parameter:", e);
+        console.error("Error processing 'after' parameter:", e);
+        toast({
+          title: "Error processing URL parameter",
+          description: "Could not process the 'after' parameter from the URL.",
+          variant: "destructive",
+        });
       }
     }
 

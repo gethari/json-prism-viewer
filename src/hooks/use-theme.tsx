@@ -29,8 +29,15 @@ export function ThemeProvider({
   storageKey = 'vite-ui-theme',
   ...props
 }: ThemeProviderProps) {
+  // Initialize state inside the function component
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => {
+      // This needs to be in a function to avoid SSR issues
+      if (typeof window !== 'undefined') {
+        return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
+      }
+      return defaultTheme;
+    }
   );
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('light');
 

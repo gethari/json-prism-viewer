@@ -6,11 +6,19 @@ import {
   ArrowUpDown,
   Copy,
   RefreshCw,
-  Trash2
+  Trash2,
+  FileJson
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/contexts/SettingsContext';
 import FileSizeComparison from './FileSizeComparison';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getFormattedSample } from '@/utils/sampleJsonData';
 
 interface JsonCompareToolbarProps {
   originalJson: string;
@@ -64,6 +72,20 @@ const JsonCompareToolbar: React.FC<JsonCompareToolbarProps> = ({
     toast({
       title: "Inputs swapped",
       description: "Original and modified JSON have been swapped.",
+    });
+  };
+
+  const handleLoadSample = (complex: boolean = false) => {
+    setOriginalJson(getFormattedSample('original', complex));
+    setModifiedJson(getFormattedSample('modified', complex));
+    
+    if (autoCompare) {
+      setShowDiff(true);
+    }
+    
+    toast({
+      title: "Sample data loaded",
+      description: `Loaded ${complex ? 'complex' : 'simple'} sample JSON for demonstration.`,
     });
   };
 
@@ -147,6 +169,23 @@ const JsonCompareToolbar: React.FC<JsonCompareToolbarProps> = ({
         >
           <Trash2 className="mr-2 h-4 w-4" /> Clear All
         </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <FileJson className="mr-2 h-4 w-4" /> Load Sample
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => handleLoadSample(false)}>
+              Simple Example
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleLoadSample(true)}>
+              Complex Example
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <FileSizeComparison 
           originalSize={originalSize}
           modifiedSize={modifiedSize}

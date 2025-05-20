@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Home, GitCompare, FileJson } from 'lucide-react';
+import { Home, GitCompare, FileJson, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -25,6 +26,11 @@ const Sidebar = () => {
       name: 'Translation Checker',
       path: '/translation-checker',
       icon: <FileJson className="h-5 w-5" />,
+    },
+    {
+      name: 'About',
+      path: '/about',
+      icon: <Info className="h-5 w-5" />,
     },
   ];
 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Moon, Sun, Laptop } from 'lucide-react';
+import { Moon, Sun, Laptop, Info } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -21,8 +21,25 @@ const Header = () => {
           <Link to="/" className="mr-6 flex items-center space-x-2">
             <span className="font-bold sm:inline-block">JSON Toolkit</span>
           </Link>
+          <nav className="hidden md:flex items-center space-x-4 lg:space-x-6">
+            <Link to="/json-compare" className="text-sm font-medium transition-colors hover:text-primary">
+              Compare
+            </Link>
+            <Link to="/translation-checker" className="text-sm font-medium transition-colors hover:text-primary">
+              Translation
+            </Link>
+            <Link to="/about" className="text-sm font-medium transition-colors hover:text-primary">
+              About
+            </Link>
+          </nav>
         </div>
         <div className="flex items-center">
+          <Button variant="ghost" size="icon" asChild className="mr-2">
+            <Link to="/about" title="About">
+              <Info className="h-5 w-5" />
+              <span className="sr-only">About</span>
+            </Link>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">

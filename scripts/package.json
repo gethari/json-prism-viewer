@@ -1,0 +1,19 @@
+
+{
+  "name": "json-diff-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for analyzing JSON changes in GitHub Actions",
+  "main": "analyze-json-changes.ts",
+  "scripts": {
+    "analyze": "ts-node analyze-json-changes.ts",
+    "build": "tsc analyze-json-changes.ts --outDir dist --target es2020 --module commonjs --strict",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}

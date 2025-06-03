@@ -1,0 +1,183 @@
+
+name: JSON Diff Analysis
+
+on:
+  pull_request:
+    paths:
+      - '**/*.json'  # Adjust this path to match your JSON files location
+    types: [opened, synchronize, reopened]
+
+env:
+  COMPARISON_TOOL_URL: 'https://your-comparison-tool.com'  # Replace with your actual tool URL
+
+jobs:
+  analyze-json-changes:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for comparison
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          npm install -g typescript ts-node
+          npm install @types/node
+          
+      - name: Get changed JSON files
+        id: changed-files
+        run: |
+          # Get list of changed JSON files
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '\.json$' || true)
+          echo "Changed JSON files:"
+          echo "$CHANGED_FILES"
+          
+          # Convert to array and process each file
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_json_changes=true" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" > changed_files.txt
+          else
+            echo "has_json_changes=false" >> $GITHUB_OUTPUT
+            echo "No JSON files changed"
+          fi
+          
+      - name: Process JSON changes
+        if: steps.changed-files.outputs.has_json_changes == 'true'
+        id: process-changes
+        run: |
+          # Process each changed JSON file
+          COMMENT_FILE="pr-comment-full.md"
+          echo "# 🔍 JSON Comparison Analysis" > $COMMENT_FILE
+          echo "" >> $COMMENT_FILE
+          
+          HAS_ANY_CHANGES=false
+          TOTAL_FILES=0
+          
+          while IFS= read -r file; do
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              echo "Processing file: $file"
+              TOTAL_FILES=$((TOTAL_FILES + 1))
+              
+              # Create before and after versions
+              BEFORE_FILE="before_${file//\//_}"
+              AFTER_FILE="after_${file//\//_}"
+              
+              # Get before version (from previous commit)
+              git show HEAD~1:"$file" > "$BEFORE_FILE" 2>/dev/null || echo "[]" > "$BEFORE_FILE"
+              
+              # Get after version (current)
+              cp "$file" "$AFTER_FILE"
+              
+              # Run analysis
+              TEMP_COMMENT="temp_comment_${TOTAL_FILES}.md"
+              
+              ts-node scripts/analyze-json-changes.ts "$BEFORE_FILE" "$AFTER_FILE" "$COMPARISON_TOOL_URL" "$TEMP_COMMENT"
+              
+              # Check if this file had changes
+              if grep -q "Found \*\*[1-9]" "$TEMP_COMMENT"; then
+                HAS_ANY_CHANGES=true
+                echo "## 📁 File: \`$file\`" >> $COMMENT_FILE
+                echo "" >> $COMMENT_FILE
+                tail -n +3 "$TEMP_COMMENT" >> $COMMENT_FILE  # Skip the main header
+                echo "" >> $COMMENT_FILE
+                echo "---" >> $COMMENT_FILE
+                echo "" >> $COMMENT_FILE
+              fi
+              
+              # Cleanup temp files
+              rm -f "$BEFORE_FILE" "$AFTER_FILE" "$TEMP_COMMENT"
+            fi
+          done < changed_files.txt
+          
+          if [ "$HAS_ANY_CHANGES" = "true" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected across $TOTAL_FILES file(s)"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "## 🔍 JSON Comparison Analysis" > $COMMENT_FILE
+            echo "" >> $COMMENT_FILE
+            echo "No significant changes detected in JSON data structures." >> $COMMENT_FILE
+            echo "" >> $COMMENT_FILE
+            echo "*Analyzed $TOTAL_FILES JSON file(s)*" >> $COMMENT_FILE
+          fi
+          
+      - name: Update PR comment
+        if: steps.changed-files.outputs.has_json_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Read the generated comment
+            const commentFile = 'pr-comment-full.md';
+            let commentBody = '';
+            
+            if (fs.existsSync(commentFile)) {
+              commentBody = fs.readFileSync(commentFile, 'utf8');
+            } else {
+              commentBody = '## 🔍 JSON Comparison Analysis\n\nError: Could not generate analysis report.';
+            }
+            
+            // Add footer with metadata
+            commentBody += '\n\n---\n';
+            commentBody += `*Analysis completed at ${new Date().toISOString()}*\n`;
+            commentBody += `*Workflow: [${context.workflow}](${context.payload.repository.html_url}/actions/runs/${context.runId})*\n`;
+            commentBody += `*Commit: ${context.sha.substring(0, 7)}*`;
+            
+            // Look for existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🔍 JSON Comparison Analysis')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing PR comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new PR comment');
+            }
+            
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.changed-files.outputs.has_json_changes }}" = "true" ]; then
+            if [ "${{ steps.process-changes.outputs.has_changes }}" = "true" ]; then
+              echo "✅ JSON analysis completed with changes detected"
+            else
+              echo "✅ JSON analysis completed with no significant changes"
+            fi
+          else
+            echo "ℹ️ No JSON files were modified in this PR"
+          fi

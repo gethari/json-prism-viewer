@@ -205,9 +205,15 @@ async function main() {
       process.exit(1);
     }
     
-    // Read and parse JSON files
-    const beforeData: JsonArrayItem[] = JSON.parse(fs.readFileSync(beforeFile, 'utf8'));
-    const afterData: JsonArrayItem[] = JSON.parse(fs.readFileSync(afterFile, 'utf8'));
+    // Read and parse JSON files - FIXED: Proper JSON parsing
+    const beforeRaw = fs.readFileSync(beforeFile, 'utf8');
+    const afterRaw = fs.readFileSync(afterFile, 'utf8');
+    
+    console.log(`Raw before data type: ${typeof beforeRaw}`);
+    console.log(`Raw after data type: ${typeof afterRaw}`);
+    
+    const beforeData: JsonArrayItem[] = JSON.parse(beforeRaw);
+    const afterData: JsonArrayItem[] = JSON.parse(afterRaw);
     
     console.log(`Analyzing changes between ${beforeFile} and ${afterFile}`);
     console.log(`Before: ${beforeData.length} items, After: ${afterData.length} items`);

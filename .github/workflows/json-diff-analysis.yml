@@ -39,7 +39,7 @@ jobs:
         id: changed-files
         run: |
           # Get list of changed JSON files
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '\.json$' || true)
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.json$' || true)
           echo "Changed JSON files:"
           echo "$CHANGED_FILES"
           
@@ -73,8 +73,8 @@ jobs:
               BEFORE_FILE="before_${file//\//_}"
               AFTER_FILE="after_${file//\//_}"
               
-              # Get before version (from previous commit)
-              git show HEAD~1:"$file" > "$BEFORE_FILE" 2>/dev/null || echo "[]" > "$BEFORE_FILE"
+              # Get before version (from base commit)
+              git show ${{ github.event.pull_request.base.sha }}:"$file" > "$BEFORE_FILE" 2>/dev/null || echo "[]" > "$BEFORE_FILE"
               
               # Get after version (current)
               cp "$file" "$AFTER_FILE"

@@ -8,7 +8,7 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  COMPARISON_TOOL_URL: 'https://your-comparison-tool.com'  # Replace with your actual tool URL
+  COMPARISON_TOOL_URL: 'https://gethari.github.io/json-prism-viewer/#/json-compare'  # Replace with your actual tool URL
 
 jobs:
   analyze-json-changes:
@@ -35,71 +35,89 @@ jobs:
           npm install -g typescript ts-node
           npm install @types/node
           
-      - name: Get changed JSON files
+      - name: Get changed specific JSON files (by filename)
         id: changed-files
         run: |
-          # Get list of changed JSON files
+          # Define specific filenames to match
+          ALLOWED_FILENAMES=("test.json")
+
+          # Get list of changed JSON files using PR base and head commits
           CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.json$' || true)
-          echo "Changed JSON files:"
+
+          echo "All changed JSON files:"
           echo "$CHANGED_FILES"
-          
-          # Convert to array and process each file
-          if [ -n "$CHANGED_FILES" ]; then
+
+          # Filter to match any file whose basename matches allowed filenames
+          MATCHED_FILES=""
+          for file in $CHANGED_FILES; do
+            BASENAME=$(basename "$file")
+            for allowed in "${ALLOWED_FILENAMES[@]}"; do
+              if [ "$BASENAME" = "$allowed" ]; then
+                MATCHED_FILES+="$file"$'\n'
+              fi
+            done
+          done
+
+          # Output result
+          if [ -n "$MATCHED_FILES" ]; then
+            echo "Matched JSON files:"
+            echo "$MATCHED_FILES"
             echo "has_json_changes=true" >> $GITHUB_OUTPUT
-            echo "$CHANGED_FILES" > changed_files.txt
+            echo "$MATCHED_FILES" > changed_files.txt
           else
+            echo "No matching JSON files changed"
             echo "has_json_changes=false" >> $GITHUB_OUTPUT
-            echo "No JSON files changed"
           fi
           
       - name: Process JSON changes
         if: steps.changed-files.outputs.has_json_changes == 'true'
         id: process-changes
         run: |
-          # Process each changed JSON file
           COMMENT_FILE="pr-comment-full.md"
           echo "# 🔍 JSON Comparison Analysis" > $COMMENT_FILE
           echo "" >> $COMMENT_FILE
-          
+
           HAS_ANY_CHANGES=false
           TOTAL_FILES=0
-          
+
           while IFS= read -r file; do
             if [ -n "$file" ] && [ -f "$file" ]; then
               echo "Processing file: $file"
               TOTAL_FILES=$((TOTAL_FILES + 1))
-              
-              # Create before and after versions
-              BEFORE_FILE="before_${file//\//_}"
-              AFTER_FILE="after_${file//\//_}"
-              
-              # Get before version (from base commit)
+
+              # Sanitize filename by replacing slashes with underscores
+              SANITIZED_FILE_NAME="${file//\//_}"
+
+              # Define before and after filenames (no 'before_' or 'after_' prefix)
+              BEFORE_FILE="${SANITIZED_FILE_NAME}.before.json"
+              AFTER_FILE="${SANITIZED_FILE_NAME}.after.json"
+
+              # Get previous version from PR base commit
               git show ${{ github.event.pull_request.base.sha }}:"$file" > "$BEFORE_FILE" 2>/dev/null || echo "[]" > "$BEFORE_FILE"
-              
-              # Get after version (current)
+
+              # Copy current version
               cp "$file" "$AFTER_FILE"
-              
-              # Run analysis
+
+              # Run analysis using the correct script name
               TEMP_COMMENT="temp_comment_${TOTAL_FILES}.md"
-              
               ts-node scripts/analyze-json-changes.ts "$BEFORE_FILE" "$AFTER_FILE" "$COMPARISON_TOOL_URL" "$TEMP_COMMENT"
-              
-              # Check if this file had changes
+
+              # If any meaningful changes are found
               if grep -q "Found \*\*[1-9]" "$TEMP_COMMENT"; then
                 HAS_ANY_CHANGES=true
                 echo "## 📁 File: \`$file\`" >> $COMMENT_FILE
                 echo "" >> $COMMENT_FILE
-                tail -n +3 "$TEMP_COMMENT" >> $COMMENT_FILE  # Skip the main header
+                tail -n +3 "$TEMP_COMMENT" >> $COMMENT_FILE  # Skip the title line
                 echo "" >> $COMMENT_FILE
                 echo "---" >> $COMMENT_FILE
                 echo "" >> $COMMENT_FILE
               fi
-              
-              # Cleanup temp files
+
+              # Cleanup
               rm -f "$BEFORE_FILE" "$AFTER_FILE" "$TEMP_COMMENT"
             fi
           done < changed_files.txt
-          
+
           if [ "$HAS_ANY_CHANGES" = "true" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "Changes detected across $TOTAL_FILES file(s)"

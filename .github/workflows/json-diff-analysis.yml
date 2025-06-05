@@ -35,11 +35,15 @@ jobs:
           npm install -g typescript ts-node
           npm install @types/node
           
-      - name: Get changed specific JSON files (by filename)
+      - name: Get changed specific JSON files
         id: changed-files
         run: |
-          # Define specific filenames to match
-          ALLOWED_FILENAMES=("test.json")
+          # Define specific files to monitor (add your target files here)
+          ALLOWED_FILES=(
+            "src/test.json"
+            "data/config.json"
+            "translations/en.json"
+          )
 
           # Get list of changed JSON files using PR base and head commits
           CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep '\.json$' || true)
@@ -47,25 +51,25 @@ jobs:
           echo "All changed JSON files:"
           echo "$CHANGED_FILES"
 
-          # Filter to match any file whose basename matches allowed filenames
+          # Filter to match only allowed files
           MATCHED_FILES=""
           for file in $CHANGED_FILES; do
-            BASENAME=$(basename "$file")
-            for allowed in "${ALLOWED_FILENAMES[@]}"; do
-              if [ "$BASENAME" = "$allowed" ]; then
+            for allowed in "${ALLOWED_FILES[@]}"; do
+              if [ "$file" = "$allowed" ]; then
                 MATCHED_FILES+="$file"$'\n'
+                echo "✓ Matched: $file"
               fi
             done
           done
 
           # Output result
           if [ -n "$MATCHED_FILES" ]; then
-            echo "Matched JSON files:"
+            echo "Matched JSON files to analyze:"
             echo "$MATCHED_FILES"
             echo "has_json_changes=true" >> $GITHUB_OUTPUT
             echo "$MATCHED_FILES" > changed_files.txt
           else
-            echo "No matching JSON files changed"
+            echo "No matching JSON files changed (only monitoring specific files)"
             echo "has_json_changes=false" >> $GITHUB_OUTPUT
           fi
           
@@ -88,7 +92,7 @@ jobs:
               # Sanitize filename by replacing slashes with underscores
               SANITIZED_FILE_NAME="${file//\//_}"
 
-              # Define before and after filenames (no 'before_' or 'after_' prefix)
+              # Define before and after filenames
               BEFORE_FILE="${SANITIZED_FILE_NAME}.before.json"
               AFTER_FILE="${SANITIZED_FILE_NAME}.after.json"
 
@@ -197,5 +201,5 @@ jobs:
               echo "✅ JSON analysis completed with no significant changes"
             fi
           else
-            echo "ℹ️ No JSON files were modified in this PR"
+            echo "ℹ️ No monitored JSON files were modified in this PR"
           fi

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import JsonInput from '@/components/JsonInput';
+import PropertySelector from '@/components/PropertySelector';
 import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseJson } from '@/utils/jsonUtils';
@@ -11,6 +12,8 @@ interface TranslationInputsContainerProps {
   setConfigJson: (json: string) => void;
   setTranslationJson: (json: string) => void;
   isProcessing?: boolean;
+  selectedProperties: string[];
+  onPropertiesChange: (properties: string[]) => void;
 }
 
 const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
@@ -19,6 +22,8 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
   setConfigJson,
   setTranslationJson,
   isProcessing = false,
+  selectedProperties,
+  onPropertiesChange,
 }) => {
   const handleConfigJsonPaste = (json: string) => {
     // Automatically escape the config JSON if needed
@@ -71,6 +76,13 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
         </div>
       </div>
 
+      <div className="mb-6">
+        <PropertySelector
+          selectedProperties={selectedProperties}
+          onPropertiesChange={onPropertiesChange}
+        />
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2 h-full">
           <JsonInput
@@ -97,7 +109,7 @@ const TranslationInputsContainer: React.FC<TranslationInputsContainerProps> = ({
       <div className="flex justify-center mt-6">
         <Button
           size="lg"
-          disabled={!configJson || !translationJson || isProcessing}
+          disabled={!configJson || !translationJson || isProcessing || selectedProperties.length === 0}
           onClick={() => {
             // Call our handler to add visual effects
             handleButtonClick();

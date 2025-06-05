@@ -5,9 +5,10 @@ import { stringSimilarity } from './stringUtils';
  * Recursively finds all label keys in a configuration object and their corresponding translation keys
  * @param obj The configuration object to search
  * @param results Array to accumulate results
+ * @param selectedProperties Array of property names to search for (for future extensibility)
  * @returns Array of objects with label value and translation key
  */
-function findLabelKeys(obj: any, results: {label: string, translationKey: string | null, path: any[]}[] = [], path: any[] = [], ignoredFieldsArray: string[] = []): {label: string, translationKey: string | null, path: any[]}[] {
+function findLabelKeys(obj: any, results: {label: string, translationKey: string | null, path: any[]}[] = [], path: any[] = [], ignoredFieldsArray: string[] = [], selectedProperties: string[] = ['label']): {label: string, translationKey: string | null, path: any[]}[] {
   if (!obj || typeof obj !== 'object') {
     return results;
   }
@@ -16,6 +17,8 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
   // But skip if it has a fieldName (new condition as requested)
   const hasFieldName = obj.hasOwnProperty('fieldName') && typeof obj.fieldName === 'string';
   
+  // For now, maintain backward compatibility by only checking 'label'
+  // Future enhancement: check all selectedProperties
   if (obj.hasOwnProperty('label') && typeof obj.label === 'string') {
     if (hasFieldName) {
       // Track this as an ignored field
@@ -38,10 +41,10 @@ function findLabelKeys(obj: any, results: {label: string, translationKey: string
 
   // Recursively search all properties
   if (Array.isArray(obj)) {
-    obj.forEach((item, index) => findLabelKeys(item, results, [...path, index], ignoredFieldsArray));
+    obj.forEach((item, index) => findLabelKeys(item, results, [...path, index], ignoredFieldsArray, selectedProperties));
   } else {
     Object.entries(obj).forEach(([key, val]) => {
-      findLabelKeys(val, results, [...path, key], ignoredFieldsArray);
+      findLabelKeys(val, results, [...path, key], ignoredFieldsArray, selectedProperties);
     });
   }
 
@@ -68,9 +71,10 @@ function generateTranslationKey(label: string): string {
  * Also collects ignored fields with fieldName property
  * @param configJson The configuration JSON object or string
  * @param translationJson The translation JSON object or string
+ * @param selectedProperties Array of property names to search for (default: ['label'])
  * @returns Object with missing translations and ignored fields
  */
-export function findMissingTranslations(configJson: any, translationJson: any): {
+export function findMissingTranslations(configJson: any, translationJson: any, selectedProperties: string[] = ['label']): {
   items: {key: string, value: string, existsInTranslations: boolean}[];
   ignoredFields: string[];
 } {
@@ -85,8 +89,8 @@ export function findMissingTranslations(configJson: any, translationJson: any): 
   // Track ignored fields with fieldName property
   const ignoredFields: string[] = [];
   
-  // Find all label keys in the config
-  const labelEntries = findLabelKeys(config, [], [], ignoredFields);
+  // Find all label keys in the config (pass selectedProperties for future use)
+  const labelEntries = findLabelKeys(config, [], [], ignoredFields, selectedProperties);
   
   // Create a map of existing translation values to keys
   const existingTranslationsMap = new Map<string, string>();

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +42,7 @@ const useKeyboardShortcuts = (shortcuts: { key: string; altKey?: boolean; callba
 const TranslationCheckerContent = () => {
   const [configJson, setConfigJson] = useState('');
   const [translationJson, setTranslationJson] = useState('');
+  const [selectedProperties, setSelectedProperties] = useState<string[]>(['label']); // Default to 'label' only
   const [missingTranslations, setMissingTranslations] = useState<
     { key: string; value: string; existsInTranslations: boolean }[]
   >([]);
@@ -107,7 +107,7 @@ const TranslationCheckerContent = () => {
 
   // Effect to check translations when both inputs are available
   useEffect(() => {
-    if (configJson && translationJson && !isProcessing) {
+    if (configJson && translationJson && selectedProperties.length > 0 && !isProcessing) {
       setIsProcessing(true);
 
       // Show toast notification that processing has started
@@ -122,7 +122,9 @@ const TranslationCheckerContent = () => {
           typeof translationJson === 'string' ? parseJson(translationJson) : translationJson;
 
         if (configData && translationData) {
-          const result = findMissingTranslations(configData, translationData);
+          // Pass selectedProperties to findMissingTranslations for future use
+          // For now, it maintains backward compatibility by using 'label'
+          const result = findMissingTranslations(configData, translationData, selectedProperties);
           setMissingTranslations(result.items);
           setIgnoredFields(result.ignoredFields || []);
 
@@ -158,7 +160,7 @@ const TranslationCheckerContent = () => {
         }
       }
     }
-  }, [configJson, translationJson, toast, isProcessing, showResults]);
+  }, [configJson, translationJson, selectedProperties, toast, isProcessing, showResults]);
 
   const handleRevalidate = () => {
     if (updatedConfigJson && !isProcessing) {
@@ -226,6 +228,8 @@ const TranslationCheckerContent = () => {
                   setConfigJson={setConfigJson}
                   setTranslationJson={setTranslationJson}
                   isProcessing={isProcessing}
+                  selectedProperties={selectedProperties}
+                  onPropertiesChange={setSelectedProperties}
                 />
               </CardContent>
             </Card>
